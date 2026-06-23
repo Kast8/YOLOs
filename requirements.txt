@@ -1,0 +1,7 @@
+numpy>=1.20
+Pillow>=9
+jupyter>=1.0
+matplotlib>=3.5
+opencv-python>=4.7
+ultralytics>=8.3
+
