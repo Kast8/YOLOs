@@ -1,4 +1,4 @@
-"""CLI shared by yolov1.py ... yolov13.py."""
+"""CLI shared by the notebook and the thin yolov*.py entry points."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import argparse
 import json
 import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 from common.demos import run_demo
@@ -52,7 +53,7 @@ def _external_infer(args):
     subprocess.run(command, check=True)
 
 
-def main(version: int):
+def main(version: int, argv=None):
     info = VERSIONS[version]
     parser = argparse.ArgumentParser(description=f"{info['title']}: {info['innovation']}")
     parser.add_argument("--mode", choices=["info", "demo", "infer"], default="info")
@@ -65,7 +66,7 @@ def main(version: int):
     parser.add_argument("--conf", type=float, default=.25)
     parser.add_argument("--iou", type=float, default=.45)
     parser.add_argument("--save", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.mode == "info":
         print(json.dumps(info, ensure_ascii=False, indent=2))
     elif args.mode == "demo":
@@ -76,3 +77,17 @@ def main(version: int):
         backend = info["backend"] if args.backend == "auto" else args.backend
         {"darknet": _darknet_infer, "ultralytics": _ultralytics_infer, "external": _external_infer}[backend](args)
 
+
+
+def cli(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    parser = argparse.ArgumentParser(
+        description="Run a YOLO history generation demo or inference adapter."
+    )
+    parser.add_argument("version", type=int, choices=sorted(VERSIONS))
+    args, rest = parser.parse_known_args(argv)
+    main(args.version, rest)
+
+
+if __name__ == "__main__":
+    cli()
