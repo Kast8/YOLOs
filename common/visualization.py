@@ -11,6 +11,24 @@ __all__ = [
 from pathlib import Path
 
 
+def _display_figure(fig):
+    try:
+        from IPython.display import display
+        display(fig)
+    except Exception:
+        try:
+            fig.show()
+        except Exception:
+            pass
+    finally:
+        try:
+            import matplotlib.pyplot as plt
+            plt.close(fig)
+        except Exception:
+            pass
+    return None
+
+
 def _load_image(path: Path):
     try:
         from PIL import Image
@@ -46,7 +64,7 @@ def display_image_grid(image_paths, titles=None, columns: int = 3, figsize=(14, 
         ax.axis("off")
 
     fig.tight_layout()
-    return fig
+    return _display_figure(fig)
 
 
 def latest_detect_dir(runs_dir="runs/detect"):

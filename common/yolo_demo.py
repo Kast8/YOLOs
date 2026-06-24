@@ -11,11 +11,32 @@ __all__ = [
     "display_yolov1_output_flow",
     "display_yolov1_responsible_cells",
     "display_yolov1_stages",
+    "display_yolo_architecture",
+    "display_yolo_technology_demo",
+    "display_yolo_element_demo",
 ]
 
 from pathlib import Path
 
 import numpy as np
+
+
+def _display_figure(fig):
+    try:
+        from IPython.display import display
+        display(fig)
+    except Exception:
+        try:
+            fig.show()
+        except Exception:
+            pass
+    finally:
+        try:
+            import matplotlib.pyplot as plt
+            plt.close(fig)
+        except Exception:
+            pass
+    return None
 
 
 YOLOV1_CLASSES = ["person", "bicycle", "motorcycle", "car", "bus"]
@@ -185,7 +206,7 @@ def display_yolov1_stages(stages):
         axes[2].text(x, y - 4, f"cell({row},{col}) {cell['label']}", color=colors[i % len(colors)], fontsize=9, weight="bold")
 
     fig.tight_layout()
-    return fig
+    return _display_figure(fig)
 
 
 
@@ -280,7 +301,7 @@ def display_yolov1_output_flow(stages):
     ax.text(tx + 0.55, ty + 1.15, f"{grid_size}x{grid_size}x{depth}", ha="center", fontsize=8, color="#9a3412")
 
     fig.tight_layout()
-    return fig
+    return _display_figure(fig)
 
 
 
@@ -384,7 +405,7 @@ def display_yolov1_responsible_cells(stages):
     )
 
     fig.tight_layout()
-    return fig
+    return _display_figure(fig)
 
 
 def compute_yolov1_loss_demo(stages, lambda_coord=5.0, lambda_noobj=0.5):
@@ -571,5 +592,743 @@ def display_yolov1_architecture(stages):
         cur += sw
 
     fig.tight_layout()
-    return fig
+    return _display_figure(fig)
 
+
+
+
+def _version_title(version):
+    if version == 26:
+        return "YOLO26"
+    if version == 11:
+        return "YOLO11"
+    return f"YOLOv{version}"
+
+
+def _arch_spec(version):
+    specs = {
+        2: {
+            "blocks": ["Input\n416 x 416", "Darknet-19\n13x13 deep feat", "Passthrough\n26x26 reorg + concat", "Anchor head\ncell x anchor", "NMS\nfinal boxes"],
+            "notes": ["YOLOv1の直接bbox回帰から、anchorごとのoffset予測へ移行", "分類データと検出データを階層ラベルで共同学習するYOLO9000も提案"],
+        },
+        3: {
+            "blocks": ["Input\n416 x 416", "Darknet-53\nresidual backbone", "FPN-like\nfeature fusion", "3 scale heads\n52/26/13 grids", "NMS\nper class boxes"],
+            "notes": ["深い特徴だけでなく、浅い高解像度特徴も検出に使う", "softmaxではなく独立ロジスティック分類でmulti-label性を扱いやすくした"],
+        },
+        4: {
+            "blocks": ["Input\nMosaic/SAT", "CSPDarknet53\nMish", "SPP + PAN\nfeature aggregation", "YOLO heads\nanchor based", "NMS\nfinal boxes"],
+            "notes": ["Backbone, neck, head, training tricksを体系的に組み合わせた", "BoFは推論コストを増やさず学習を改善し、BoSは少しコストを払い精度を上げる"],
+        },
+        5: {
+            "blocks": ["Input\nPyTorch pipeline", "Focus/CSP\nbackbone", "PAN-FPN\nneck", "Anchor head\nAutoAnchor", "Export/API\nONNX/TensorRT"],
+            "notes": ["論文より実装体系としての影響が大きい", "学習、評価、推論、exportを同じCLI/APIで扱う実務上の流れを普及させた"],
+        },
+        6: {
+            "blocks": ["Input", "Rep backbone\ntrain-time branches", "Efficient neck", "Decoupled head\ncls/reg separated", "Deploy model\nfused convs"],
+            "notes": ["学習時は複数枝で最適化しやすく、推論時は単一畳み込みへ融合", "分類と回帰のheadを分け、各タスクに適した特徴を使いやすくした"],
+        },
+        7: {
+            "blocks": ["Input", "E-ELAN\nmulti-path expand", "Concat/merge\ngradient diversity", "Scaled heads", "Planned re-param\ndeploy"],
+            "notes": ["特徴変換の経路を増やし、結合して表現力を上げる", "モデルサイズを変えるときも計算量と精度の関係を崩しにくい設計を重視"],
+        },
+        8: {
+            "blocks": ["Input", "C2f backbone", "PAN-FPN neck", "Anchor-free\ndecoupled head", "Task API\ndetect/seg/pose"],
+            "notes": ["anchorの幅高さ候補ではなく、特徴点からbbox境界までの距離を予測", "検出以外のタスクも同じ実装体系に統合"],
+        },
+        9: {
+            "blocks": ["Input", "GELAN backbone", "Main branch\ninference path", "PGI auxiliary\ntraining only", "YOLO head"],
+            "notes": ["推論経路を重くせず、学習時だけ補助的な勾配情報を追加", "深い/軽量なモデルで情報が失われる問題を学習設計から扱う"],
+        },
+        10: {
+            "blocks": ["Input", "Efficient backbone", "Dual heads\none-to-many + one-to-one", "Consistent assignment", "NMS-free\nend-to-end output"],
+            "notes": ["学習時は豊富な割当で信号を増やし、推論時は重複の少ないone-to-one出力を使う", "後処理NMSの遅延と実装差を設計対象にした"],
+        },
+        11: {
+            "blocks": ["Input", "C3k2 backbone", "C2PSA attention", "Multi-task heads", "Unified API\ndetect/seg/pose/OBB"],
+            "notes": ["CNNの局所特徴に加えて、軽量attentionで位置間の関係を使う", "Ultralytics系列として複数タスクを同じ操作体系で扱う"],
+        },
+        12: {
+            "blocks": ["Input", "R-ELAN backbone", "Area Attention\nregional tokens", "YOLO head", "Real-time output"],
+            "notes": ["global attentionの計算量を避け、領域内attentionで文脈と速度を両立", "attentionをリアルタイム検出の制約に合わせて再設計"],
+        },
+        13: {
+            "blocks": ["Input", "Backbone/neck", "HyperACE\nhypergraph correlation", "FullPAD + DS assignment", "Detection output"],
+            "notes": ["2点間ではなく複数特徴をまとめるhyperedgeで高次相関を見る", "遮蔽や密集など、離れた特徴のまとまりが重要なケースを意識"],
+        },
+        26: {
+            "blocks": ["Input", "Efficient backbone", "NMS-free head", "No DFL\nlean regression", "Deployment\nCPU/edge/export"],
+            "notes": ["番号順のYOLOv14ではなくUltralyticsの製品系列として扱う", "後処理を単純化し、配備時の遅延と実装複雑性を下げる方向"],
+        },
+    }
+    return specs[version]
+
+
+def _arch_notes_en(version):
+    notes = {
+        2: ["Anchor offsets replace direct box regression.", "High-resolution classification pretraining matters for detection fine-tuning."],
+        3: ["Three detection scales handle small, medium, and large objects.", "Upsampled semantic features are fused with higher-resolution features."],
+        4: ["Backbone, neck, loss, activation, and augmentation are optimized together.", "Training-time tricks become central to detector quality."],
+        5: ["PyTorch workflow makes training, inference, and export practical.", "CSP + PAN-FPN + AutoAnchor form a deployable baseline."],
+        6: ["Train-time branches are fused into deploy-time convolutions.", "Classification and regression heads are separated."],
+        7: ["E-ELAN preserves feature diversity through multi-path aggregation.", "Scaling and re-parameterization are planned with the architecture."],
+        8: ["Anchor-free decoding predicts distances from feature points.", "One API covers detection and adjacent vision tasks."],
+        9: ["PGI adds training-only gradient paths.", "Auxiliary branches are removed for inference."],
+        10: ["Dual assignments keep rich training signals and direct inference outputs.", "NMS latency becomes part of the architecture problem."],
+        11: ["Lightweight attention augments CNN feature extraction.", "The model family is optimized for multiple task heads."],
+        12: ["Area Attention limits token interactions to reduce cost.", "Attention is adapted to real-time detection constraints."],
+        13: ["Hyperedges aggregate higher-order feature relations.", "Assignment and padding details support dense detection quality."],
+        26: ["Deployment cost is treated as a first-class design target.", "NMS-free output and lean regression simplify inference."],
+    }
+    return notes[version]
+
+
+def display_yolo_architecture(version):
+    """Draw a compact architecture diagram for a YOLO generation after v1."""
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import FancyArrowPatch, Rectangle
+    except ImportError as exc:
+        raise ImportError("Install matplotlib to display YOLO architecture diagrams") from exc
+
+    spec = _arch_spec(version)
+    blocks = spec["blocks"]
+    fig, ax = plt.subplots(figsize=(15, 4.8))
+    ax.set_xlim(0, 15)
+    ax.set_ylim(0, 4.8)
+    ax.axis("off")
+    colors = ["#dbeafe", "#dcfce7", "#fef3c7", "#fee2e2", "#f3e8ff"]
+    edges = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#9333ea"]
+    w = 2.25
+    gap = 0.45
+    x0 = 0.45
+    y = 2.05
+    h = 1.45
+    for i, label in enumerate(blocks):
+        x = x0 + i * (w + gap)
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=colors[i % len(colors)], edgecolor=edges[i % len(edges)], linewidth=1.8))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=10, weight="bold", linespacing=1.25)
+        if i < len(blocks) - 1:
+            ax.add_patch(FancyArrowPatch((x + w + 0.05, y + h / 2), (x + w + gap - 0.05, y + h / 2), arrowstyle="-|>", mutation_scale=16, linewidth=1.6, color="#475569"))
+    ax.text(7.5, 4.45, f"{_version_title(version)} architecture overview", ha="center", va="top", fontsize=13, weight="bold")
+    for i, note in enumerate(_arch_notes_en(version)):
+        ax.text(0.55, 1.2 - i * 0.38, f"- {note}", ha="left", va="top", fontsize=9.5, color="#111827")
+    fig.tight_layout()
+    return _display_figure(fig)
+
+
+
+def _draw_yolov2_overview_demo(ax):
+    ax.set_title("YOLOv2: direct boxes -> cell x anchor predictions", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    def block(x, y, w, h, label, face, edge):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.6))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=8.5, weight="bold", linespacing=1.25)
+
+    # v1 side
+    block(0.35, 2.55, 1.7, 0.7, "YOLOv1\ncell", "#dbeafe", "#2563eb")
+    block(2.55, 2.55, 2.2, 0.7, "direct box\n(x, y, w, h)", "#dbeafe", "#2563eb")
+    ax.annotate("", xy=(2.55, 2.9), xytext=(2.05, 2.9), arrowprops={"arrowstyle":"-|>", "color":"#475569"})
+
+    # v2 side
+    block(0.35, 1.2, 1.7, 0.7, "YOLOv2\ncell", "#dcfce7", "#16a34a")
+    block(2.55, 1.2, 1.7, 0.7, "anchor 1\nprior shape", "#fef3c7", "#d97706")
+    block(4.65, 1.2, 1.7, 0.7, "anchor 2\nprior shape", "#fef3c7", "#d97706")
+    block(6.75, 1.2, 2.45, 0.7, "predict offsets\ntx, ty, tw, th", "#fee2e2", "#dc2626")
+    block(9.75, 1.2, 2.55, 0.7, "box + objectness\n+ class scores", "#f3e8ff", "#9333ea")
+    for x1, x2 in [(2.05,2.55),(4.25,4.65),(6.35,6.75),(9.2,9.75)]:
+        ax.annotate("", xy=(x2, 1.55), xytext=(x1, 1.55), arrowprops={"arrowstyle":"-|>", "color":"#475569"})
+
+    # Supporting changes
+    block(2.7, 0.15, 2.35, 0.62, "k-means anchors\nfrom training bbox (w,h)", "#fff7ed", "#ea580c")
+    block(5.55, 0.15, 2.35, 0.62, "passthrough\nmid feature concat", "#e0f2fe", "#0284c7")
+    block(8.4, 0.15, 2.35, 0.62, "WordTree\njoint class learning", "#f0fdf4", "#16a34a")
+
+    ax.text(6.35, 3.55, "main change: each grid cell predicts offsets from multiple learned anchor shapes", ha="center", fontsize=9.5)
+    ax.text(6.35, 0.95, "other v2 improvements support anchors, fine features, and many-class learning", ha="center", fontsize=9)
+    ax.set_xlim(0, 12.8)
+    ax.set_ylim(-0.05, 3.85)
+
+def _draw_anchor_demo(ax):
+    ax.set_title("Anchor boxes: object shape -> best prior", fontsize=11, weight="bold")
+    ax.set_xlim(0, 0.55)
+    ax.set_ylim(0, 0.6)
+    ax.set_xlabel("box width")
+    ax.set_ylabel("box height")
+    ax.grid(True, alpha=0.25)
+    wh = np.array([[.1, .2], [.2, .1], [.4, .5], [.12, .18]])
+    anchors = np.array([[.1, .2], [.4, .5]])
+    colors = ["#2563eb", "#dc2626"]
+    for i, a in enumerate(anchors):
+        ax.scatter([a[0]], [a[1]], s=180, marker="s", color=colors[i], label=f"anchor {i}")
+    for w, h in wh:
+        best = np.argmin(np.abs(anchors[:, 0] * anchors[:, 1] - w * h))
+        ax.scatter([w], [h], s=70, color=colors[best], edgecolor="white", linewidth=1.2)
+        ax.plot([w, anchors[best, 0]], [h, anchors[best, 1]], color=colors[best], alpha=0.5)
+    ax.legend(loc="upper left")
+
+
+def _draw_multiscale_demo(ax):
+    ax.set_title("Multi-scale prediction", fontsize=11, weight="bold")
+    ax.axis("off")
+    sizes = [(52, "small objects"), (26, "medium objects"), (13, "large objects")]
+    x = 0.4
+    for grid, label in sizes:
+        scale = grid / 52
+        side = 1.8 * scale + 0.65
+        ax.add_patch(Rectangle((x, 1.2), side, side, fill=False, edgecolor="#2563eb", linewidth=1.8))
+        steps = min(grid, 13)
+        for k in range(1, steps):
+            ax.plot([x, x + side], [1.2 + side * k / steps] * 2, color="#93c5fd", linewidth=0.4)
+            ax.plot([x + side * k / steps] * 2, [1.2, 1.2 + side], color="#93c5fd", linewidth=0.4)
+        ax.text(x + side / 2, 0.85, f"{grid} x {grid}\n{label}", ha="center", va="top", fontsize=9)
+        x += 3.25
+    ax.set_xlim(0, 10.2)
+    ax.set_ylim(0, 4.2)
+
+
+def _draw_mosaic_demo(ax):
+    ax.set_title("Mosaic augmentation", fontsize=11, weight="bold")
+    ax.set_xlim(0, 2)
+    ax.set_ylim(0, 2)
+    ax.axis("off")
+    colors = ["#dbeafe", "#dcfce7", "#fef3c7", "#fee2e2"]
+    labels = ["image A", "image B", "image C", "image D"]
+    positions = [(0, 1), (1, 1), (0, 0), (1, 0)]
+    for (x, y), c, label in zip(positions, colors, labels):
+        ax.add_patch(Rectangle((x, y), 1, 1, facecolor=c, edgecolor="#334155", linewidth=1.5))
+        ax.text(x + 0.5, y + 0.5, label, ha="center", va="center", fontsize=10, weight="bold")
+    ax.text(1, -0.12, "one training input mixes contexts and scales", ha="center", va="top", fontsize=9)
+
+
+def _draw_focus_demo(ax):
+    ax.set_title("Focus: spatial pixels -> channels", fontsize=11, weight="bold")
+    ax.axis("off")
+    vals = np.arange(16).reshape(4, 4)
+    for r in range(4):
+        for c in range(4):
+            fc = "#dbeafe" if (r + c) % 2 == 0 else "#dcfce7"
+            ax.add_patch(Rectangle((c, 4 - r), 0.9, 0.9, facecolor=fc, edgecolor="#334155"))
+            ax.text(c + 0.45, 4.45 - r, str(vals[r, c]), ha="center", va="center", fontsize=8)
+    ax.text(1.8, 5.2, "4 x 4 x C", ha="center", fontsize=9)
+    ax.annotate("slice + concat", xy=(5.2, 3.0), xytext=(4.25, 3.0), arrowprops={"arrowstyle": "-|>"}, ha="center")
+    names = ["even/even", "odd/even", "even/odd", "odd/odd"]
+    for i, name in enumerate(names):
+        ax.add_patch(Rectangle((6.0, 4.4 - i * 0.65), 1.8, 0.48, facecolor="#fef3c7", edgecolor="#d97706"))
+        ax.text(6.9, 4.64 - i * 0.65, name, ha="center", va="center", fontsize=8)
+    ax.text(6.9, 1.35, "2 x 2 x 4C", ha="center", fontsize=9)
+    ax.set_xlim(-0.2, 8.2)
+    ax.set_ylim(0.8, 5.5)
+
+
+def _draw_reparam_demo(ax):
+    ax.set_title("Re-parameterization", fontsize=11, weight="bold")
+    ax.axis("off")
+    labels = ["3x3 conv", "1x1 conv", "identity/BN", "fused 3x3 conv"]
+    xs = [0.4, 0.4, 0.4, 5.0]
+    ys = [3.0, 2.0, 1.0, 2.0]
+    for x, y, label in zip(xs, ys, labels):
+        ax.add_patch(Rectangle((x, y), 2.0, 0.55, facecolor="#dbeafe" if x < 5 else "#dcfce7", edgecolor="#2563eb", linewidth=1.5))
+        ax.text(x + 1.0, y + 0.275, label, ha="center", va="center", fontsize=9, weight="bold")
+    for y in ys[:3]:
+        ax.annotate("", xy=(5.0, 2.28), xytext=(2.4, y + 0.275), arrowprops={"arrowstyle": "-|>", "color": "#475569"})
+    ax.text(3.65, 3.55, "train-time branches", ha="center", fontsize=9)
+    ax.text(6.0, 1.5, "deploy-time single op", ha="center", fontsize=9)
+    ax.set_xlim(0, 8)
+    ax.set_ylim(0.7, 4)
+
+
+def _draw_elan_demo(ax):
+    ax.set_title("ELAN/GELAN-style multi-path aggregation", fontsize=11, weight="bold")
+    ax.axis("off")
+    ax.add_patch(Rectangle((0.3, 2.0), 1.5, 0.65, facecolor="#dbeafe", edgecolor="#2563eb", linewidth=1.5))
+    ax.text(1.05, 2.33, "input", ha="center", va="center", weight="bold")
+    ys = [3.1, 2.1, 1.1]
+    names = ["short path", "conv path", "deep path"]
+    for y, name in zip(ys, names):
+        ax.add_patch(Rectangle((3.0, y), 2.0, 0.55, facecolor="#dcfce7", edgecolor="#16a34a", linewidth=1.5))
+        ax.text(4.0, y + 0.275, name, ha="center", va="center", fontsize=9)
+        ax.annotate("", xy=(3.0, y + 0.275), xytext=(1.8, 2.33), arrowprops={"arrowstyle": "-|>"})
+        ax.annotate("", xy=(6.2, 2.33), xytext=(5.0, y + 0.275), arrowprops={"arrowstyle": "-|>"})
+    ax.add_patch(Rectangle((6.2, 2.0), 1.7, 0.65, facecolor="#fef3c7", edgecolor="#d97706", linewidth=1.5))
+    ax.text(7.05, 2.33, "concat", ha="center", va="center", weight="bold")
+    ax.set_xlim(0, 8.4)
+    ax.set_ylim(0.7, 3.9)
+
+
+def _draw_anchor_free_demo(ax):
+    ax.set_title("Anchor-free box decoding", fontsize=11, weight="bold")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(1, 0)
+    ax.set_aspect("equal")
+    ax.grid(True, alpha=0.25)
+    p = np.array([.5, .5])
+    ltrb = np.array([.1, .2, .3, .15])
+    box = [p[0] - ltrb[0], p[1] - ltrb[1], p[0] + ltrb[2], p[1] + ltrb[3]]
+    ax.add_patch(Rectangle((box[0], box[1]), box[2] - box[0], box[3] - box[1], fill=False, edgecolor="#dc2626", linewidth=2.2))
+    ax.scatter([p[0]], [p[1]], s=80, color="#2563eb", edgecolor="white", zorder=3)
+    labels = [(box[0], p[1], "l"), (p[0], box[1], "t"), (box[2], p[1], "r"), (p[0], box[3], "b")]
+    for x, y, label in labels:
+        ax.plot([p[0], x], [p[1], y], color="#2563eb", linewidth=1.6)
+        ax.text((p[0] + x) / 2, (p[1] + y) / 2, label, fontsize=10, weight="bold")
+
+
+def _draw_pgi_demo(ax):
+    ax.set_title("PGI: auxiliary gradient during training", fontsize=11, weight="bold")
+    ax.axis("off")
+    items = [("main loss", 0.2, 2.2), ("auxiliary loss", 0.2, 1.1), ("backbone update", 5.1, 1.65)]
+    for label, x, y in items:
+        ax.add_patch(Rectangle((x, y), 2.0, 0.65, facecolor="#dbeafe" if x < 5 else "#dcfce7", edgecolor="#2563eb", linewidth=1.5))
+        ax.text(x + 1.0, y + 0.325, label, ha="center", va="center", weight="bold", fontsize=9)
+    ax.annotate("gradient", xy=(5.1, 1.98), xytext=(2.2, 2.52), arrowprops={"arrowstyle": "-|>"})
+    ax.annotate("programmable gradient", xy=(5.1, 1.98), xytext=(2.2, 1.42), arrowprops={"arrowstyle": "-|>", "color": "#dc2626"}, color="#dc2626")
+    ax.text(3.8, 0.7, "auxiliary path is removed for inference", ha="center", fontsize=9)
+    ax.set_xlim(0, 7.5)
+    ax.set_ylim(0.5, 3.2)
+
+
+def _draw_nms_free_demo(ax):
+    ax.set_title("Dual assignment -> NMS-free inference", fontsize=11, weight="bold")
+    ax.axis("off")
+    left = [("one-to-many\ntraining", 0.4, 2.4), ("many positives\nrich supervision", 3.2, 2.4)]
+    right = [("one-to-one\ntraining", 0.4, 1.1), ("unique predictions\nused at inference", 3.2, 1.1)]
+    for items, color in [(left, "#dbeafe"), (right, "#dcfce7")]:
+        for label, x, y in items:
+            ax.add_patch(Rectangle((x, y), 2.2, 0.7, facecolor=color, edgecolor="#334155", linewidth=1.5))
+            ax.text(x + 1.1, y + 0.35, label, ha="center", va="center", fontsize=9, weight="bold")
+        ax.annotate("", xy=(3.2, items[1][2] + 0.35), xytext=(2.6, items[0][2] + 0.35), arrowprops={"arrowstyle": "-|>"})
+    ax.text(3.9, 0.55, "inference consumes one-to-one outputs directly", ha="center", fontsize=9)
+    ax.set_xlim(0, 6.0)
+    ax.set_ylim(0.3, 3.4)
+
+
+def _draw_attention_demo(ax, area=False):
+    ax.set_title("Area Attention" if area else "Position attention", fontsize=11, weight="bold")
+    ax.set_xlim(0, 4)
+    ax.set_ylim(0, 3)
+    ax.axis("off")
+    pts = [(0.8, 2.2), (2.0, 2.35), (3.2, 2.0), (1.2, 0.9), (2.5, 0.75), (3.4, 1.0)]
+    for i, (x, y) in enumerate(pts):
+        ax.scatter([x], [y], s=120, color="#dbeafe", edgecolor="#2563eb", linewidth=1.5, zorder=3)
+        ax.text(x, y, str(i), ha="center", va="center", fontsize=9, weight="bold")
+    if area:
+        ax.add_patch(Rectangle((0.35, 1.65), 3.25, 0.95, fill=False, edgecolor="#16a34a", linewidth=2))
+        ax.add_patch(Rectangle((0.35, 0.35), 3.25, 0.95, fill=False, edgecolor="#dc2626", linewidth=2))
+        pairs = [(0, 1), (1, 2), (3, 4), (4, 5)]
+    else:
+        pairs = [(0, 1), (0, 4), (2, 3), (1, 5), (3, 5)]
+    for a, b in pairs:
+        ax.plot([pts[a][0], pts[b][0]], [pts[a][1], pts[b][1]], color="#64748b", alpha=0.65)
+    ax.text(2.0, 0.08, "restricted regions reduce QK pairs" if area else "features can refer to other positions", ha="center", fontsize=9)
+
+
+def _draw_hypergraph_demo(ax):
+    ax.set_title("Hypergraph feature correlation", fontsize=11, weight="bold")
+    ax.set_xlim(0, 5)
+    ax.set_ylim(0, 3.2)
+    ax.axis("off")
+    nodes = [(0.8, 2.4), (1.5, 1.7), (0.8, 1.0), (3.6, 2.0), (4.1, 1.1)]
+    for i, (x, y) in enumerate(nodes):
+        ax.scatter([x], [y], s=120, color="#dbeafe", edgecolor="#2563eb", linewidth=1.5, zorder=3)
+        ax.text(x, y, f"n{i}", ha="center", va="center", fontsize=8, weight="bold")
+    ax.add_patch(Rectangle((0.45, 0.75), 1.45, 1.9, fill=False, edgecolor="#16a34a", linewidth=2.2))
+    ax.add_patch(Rectangle((3.25, 0.85), 1.15, 1.45, fill=False, edgecolor="#dc2626", linewidth=2.2))
+    ax.text(1.18, 2.82, "hyperedge A", ha="center", fontsize=9, color="#166534")
+    ax.text(3.82, 2.5, "hyperedge B", ha="center", fontsize=9, color="#991b1b")
+    ax.annotate("aggregate and return", xy=(2.6, 1.65), xytext=(2.1, 1.65), arrowprops={"arrowstyle": "<->"}, ha="center")
+
+
+def _draw_deployment_demo(ax):
+    ax.set_title("Deployment-oriented output", fontsize=11, weight="bold")
+    ax.axis("off")
+    labels = ["raw predictions", "confidence threshold", "final detections"]
+    xs = [0.4, 3.0, 5.9]
+    for x, label in zip(xs, labels):
+        ax.add_patch(Rectangle((x, 1.5), 2.0, 0.75, facecolor="#dbeafe", edgecolor="#2563eb", linewidth=1.5))
+        ax.text(x + 1.0, 1.875, label, ha="center", va="center", fontsize=9, weight="bold")
+    ax.annotate("no NMS loop", xy=(3.0, 1.875), xytext=(2.4, 1.875), arrowprops={"arrowstyle": "-|>"}, ha="center")
+    ax.annotate("direct consume", xy=(5.9, 1.875), xytext=(5.0, 1.875), arrowprops={"arrowstyle": "-|>"}, ha="center")
+    ax.set_xlim(0, 8.2)
+    ax.set_ylim(1.0, 2.8)
+
+
+def display_yolo_technology_demo(version):
+    """Draw the main technical difference introduced by a YOLO generation."""
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import Rectangle as _Rectangle
+    except ImportError as exc:
+        raise ImportError("Install matplotlib to display YOLO technology demos") from exc
+
+    globals()["Rectangle"] = _Rectangle
+    fig, ax = plt.subplots(figsize=(9, 4.8))
+    drawers = {
+        2: _draw_yolov2_overview_demo,
+        3: _draw_multiscale_demo,
+        4: _draw_mosaic_demo,
+        5: _draw_focus_demo,
+        6: _draw_reparam_demo,
+        7: _draw_elan_demo,
+        8: _draw_anchor_free_demo,
+        9: _draw_pgi_demo,
+        10: _draw_nms_free_demo,
+        11: lambda axis: _draw_attention_demo(axis, area=False),
+        12: lambda axis: _draw_attention_demo(axis, area=True),
+        13: _draw_hypergraph_demo,
+        26: _draw_deployment_demo,
+    }
+    if version not in drawers:
+        raise ValueError(f"No technology demo for version: {version}")
+    drawers[version](ax)
+    fig.tight_layout()
+    return _display_figure(fig)
+
+
+
+
+def _draw_iou_distance_demo(ax):
+    ax.set_title("IoU distance for anchor k-means", fontsize=11, weight="bold")
+    ax.set_xlim(-0.45, 0.45)
+    ax.set_ylim(0.45, -0.45)
+    ax.set_aspect("equal")
+    ax.grid(True, alpha=0.2)
+    ax.set_xlabel("normalized width")
+    ax.set_ylabel("normalized height")
+
+    # Boxes are placed at the same center because anchor clustering compares shape,
+    # not object position in the image.
+    box = (-0.10, -0.25, 0.20, 0.50)
+    centroid = (-0.22, -0.14, 0.44, 0.28)
+    inter = (-0.10, -0.14, 0.20, 0.28)
+
+    for x, y, w, h, color, label, alpha in [
+        (*centroid, "#2563eb", "cluster centroid", 0.18),
+        (*box, "#dc2626", "training box", 0.18),
+        (*inter, "#16a34a", "overlap", 0.45),
+    ]:
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=color, edgecolor=color, linewidth=2.0, alpha=alpha, label=label))
+        ax.add_patch(Rectangle((x, y), w, h, fill=False, edgecolor=color, linewidth=2.2))
+
+    ax.scatter([0], [0], s=45, color="#111827", zorder=4)
+    ax.text(0.02, 0.03, "same center", fontsize=8.5, color="#111827")
+    ax.text(
+        -0.42,
+        0.36,
+        "shape distance\nd(box, centroid) = 1 - IoU",
+        ha="left",
+        va="top",
+        fontsize=9.5,
+        bbox={"facecolor": "white", "edgecolor": "#cbd5e1", "alpha": 0.9, "pad": 4},
+    )
+    ax.legend(loc="upper right", fontsize=8)
+
+def _draw_bn_demo(ax):
+    ax.set_title("Batch normalization", fontsize=11, weight="bold")
+    ax.axis("off")
+    xs = [0.6, 3.2, 5.8]
+    labels = ["conv output\nx", "normalize\n(x - mean) / std", "scale + shift\ngamma * xhat + beta"]
+    for x, label in zip(xs, labels):
+        ax.add_patch(Rectangle((x, 1.6), 2.0, 0.9, facecolor="#dbeafe", edgecolor="#2563eb", linewidth=1.5))
+        ax.text(x + 1.0, 2.05, label, ha="center", va="center", fontsize=9, weight="bold")
+    for x1, x2 in [(2.6, 3.2), (5.2, 5.8)]:
+        ax.annotate("", xy=(x2, 2.05), xytext=(x1, 2.05), arrowprops={"arrowstyle": "-|>"})
+    ax.set_xlim(0, 8.2)
+    ax.set_ylim(1.0, 3.0)
+
+
+def _draw_passthrough_demo(ax):
+    ax.set_title("YOLOv2 passthrough: mid-level feature -> concat before head", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    def block(x, y, w, h, label, face, edge):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.6))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=8.5, weight="bold", linespacing=1.25)
+
+    block(0.25, 2.55, 1.35, 0.65, "input\n416 x 416", "#dbeafe", "#2563eb")
+    block(2.05, 2.55, 1.75, 0.65, "Darknet-19\nearly/mid convs", "#dcfce7", "#16a34a")
+    block(4.35, 2.55, 1.65, 0.65, "mid feature\n26 x 26 x C", "#fef3c7", "#d97706")
+    block(6.65, 2.55, 1.35, 0.65, "reorg\n2 x 2 -> ch", "#fee2e2", "#dc2626")
+    block(8.65, 2.55, 1.85, 0.65, "shallow path\n13 x 13 x 4C", "#fee2e2", "#dc2626")
+
+    block(4.35, 1.15, 1.95, 0.65, "later/deeper convs", "#dcfce7", "#16a34a")
+    block(6.9, 1.15, 1.85, 0.65, "deep feature\n13 x 13 x D", "#dbeafe", "#2563eb")
+    block(9.05, 1.15, 1.35, 0.65, "concat", "#f3e8ff", "#9333ea")
+    block(11.0, 1.15, 2.05, 0.65, "head input\n13 x 13 x (D + 4C)", "#f3e8ff", "#9333ea")
+    block(13.55, 1.15, 1.35, 0.65, "anchor\nhead", "#e0f2fe", "#0284c7")
+
+    arrows = [
+        ((1.6, 2.875), (2.05, 2.875)),
+        ((3.8, 2.875), (4.35, 2.875)),
+        ((6.0, 2.875), (6.65, 2.875)),
+        ((8.0, 2.875), (8.65, 2.875)),
+        ((5.2, 2.55), (5.05, 1.8)),
+        ((6.3, 1.475), (6.9, 1.475)),
+        ((8.75, 1.475), (9.05, 1.475)),
+        ((10.5, 1.475), (11.0, 1.475)),
+        ((13.05, 1.475), (13.55, 1.475)),
+        ((9.6, 2.55), (9.65, 1.8)),
+    ]
+    for start, end in arrows:
+        ax.annotate("", xy=end, xytext=start, arrowprops={"arrowstyle": "-|>", "color": "#475569", "linewidth": 1.4})
+
+    ax.text(9.1, 0.58, "channels increase only at the concat point: D -> D + 4C", ha="center", fontsize=9.5, color="#111827")
+    ax.set_xlim(0, 15.2)
+    ax.set_ylim(0.35, 3.55)
+
+
+def _draw_hierarchy_demo(ax):
+    ax.set_title("Hierarchical classification", fontsize=11, weight="bold")
+    ax.axis("off")
+    nodes = [("entity", 3.5, 3.0), ("animal", 2.0, 2.1), ("vehicle", 5.0, 2.1), ("dog", 1.3, 1.2), ("cat", 2.7, 1.2), ("car", 4.4, 1.2), ("bus", 5.6, 1.2)]
+    for name, x, y in nodes:
+        ax.add_patch(Rectangle((x - 0.45, y - 0.2), 0.9, 0.4, facecolor="#fef3c7", edgecolor="#d97706", linewidth=1.2))
+        ax.text(x, y, name, ha="center", va="center", fontsize=8, weight="bold")
+    for a, b in [(0,1),(0,2),(1,3),(1,4),(2,5),(2,6)]:
+        ax.plot([nodes[a][1], nodes[b][1]], [nodes[a][2]-0.2, nodes[b][2]+0.2], color="#64748b")
+    ax.set_xlim(0.5, 6.5)
+    ax.set_ylim(0.7, 3.4)
+
+
+def _draw_residual_demo(ax):
+    ax.set_title("Residual block", fontsize=11, weight="bold")
+    ax.axis("off")
+    ax.add_patch(Rectangle((0.6, 1.8), 1.3, 0.6, facecolor="#dbeafe", edgecolor="#2563eb", linewidth=1.5))
+    ax.text(1.25, 2.1, "x", ha="center", va="center", weight="bold")
+    ax.add_patch(Rectangle((3.0, 1.8), 2.0, 0.6, facecolor="#dcfce7", edgecolor="#16a34a", linewidth=1.5))
+    ax.text(4.0, 2.1, "F(x)", ha="center", va="center", weight="bold")
+    ax.add_patch(Rectangle((6.0, 1.8), 1.4, 0.6, facecolor="#fef3c7", edgecolor="#d97706", linewidth=1.5))
+    ax.text(6.7, 2.1, "x + F(x)", ha="center", va="center", weight="bold")
+    ax.annotate("", xy=(3.0, 2.1), xytext=(1.9, 2.1), arrowprops={"arrowstyle": "-|>"})
+    ax.annotate("", xy=(6.0, 2.1), xytext=(5.0, 2.1), arrowprops={"arrowstyle": "-|>"})
+    ax.annotate("skip", xy=(6.0, 2.32), xytext=(1.9, 2.65), arrowprops={"arrowstyle": "-|>"}, ha="center")
+    ax.set_xlim(0, 8)
+    ax.set_ylim(1.4, 3.0)
+
+
+def _draw_logistic_demo(ax):
+    ax.set_title("Independent logistic class prediction", fontsize=11, weight="bold")
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(-0.05, 1.05)
+    x = np.linspace(-5, 5, 200)
+    y = 1 / (1 + np.exp(-x))
+    ax.plot(x, y, color="#2563eb", linewidth=2)
+    ax.axhline(0.5, color="#64748b", linewidth=1, linestyle="--")
+    ax.set_xlabel("logit")
+    ax.set_ylabel("probability")
+    ax.grid(True, alpha=0.25)
+
+
+def _draw_spp_pan_demo(ax):
+    ax.set_title("SPP + PAN feature aggregation", fontsize=11, weight="bold")
+    ax.axis("off")
+    labels = ["feature", "SPP\n1/5/9/13 pools", "PAN\ntop-down + bottom-up", "detection heads"]
+    xs = [0.4, 2.5, 4.9, 7.1]
+    for x, label in zip(xs, labels):
+        ax.add_patch(Rectangle((x, 1.5), 1.6, 0.9, facecolor="#dbeafe", edgecolor="#2563eb", linewidth=1.5))
+        ax.text(x + 0.8, 1.95, label, ha="center", va="center", fontsize=8.5, weight="bold")
+    for x1, x2 in [(2.0,2.5),(4.1,4.9),(6.5,7.1)]:
+        ax.annotate("", xy=(x2, 1.95), xytext=(x1, 1.95), arrowprops={"arrowstyle": "-|>"})
+    ax.set_xlim(0, 9)
+    ax.set_ylim(1.0, 3.0)
+
+
+def _draw_activation_demo(ax, kind="mish"):
+    ax.set_title(kind.capitalize() + " activation", fontsize=11, weight="bold")
+    x = np.linspace(-5, 5, 300)
+    if kind == "mish":
+        y = x * np.tanh(np.log1p(np.exp(x)))
+    else:
+        y = np.maximum(x, 0)
+    ax.plot(x, y, color="#2563eb", linewidth=2)
+    ax.axhline(0, color="#64748b", linewidth=1)
+    ax.axvline(0, color="#64748b", linewidth=1)
+    ax.grid(True, alpha=0.25)
+    ax.set_xlabel("x")
+    ax.set_ylabel("f(x)")
+
+
+def _draw_ciou_demo(ax):
+    ax.set_title("CIoU components", fontsize=11, weight="bold")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(1, 0)
+    ax.set_aspect("equal")
+    ax.grid(True, alpha=0.2)
+    ax.add_patch(Rectangle((0.18, 0.25), 0.42, 0.35, fill=False, edgecolor="#2563eb", linewidth=2.2))
+    ax.add_patch(Rectangle((0.38, 0.38), 0.42, 0.32, fill=False, edgecolor="#dc2626", linewidth=2.2))
+    ax.scatter([0.39, 0.59], [0.425, 0.54], color=["#2563eb", "#dc2626"], zorder=3)
+    ax.plot([0.39, 0.59], [0.425, 0.54], color="#64748b", linestyle="--")
+    ax.text(0.5, 0.18, "IoU + center distance + aspect ratio", ha="center", fontsize=9)
+
+
+def _draw_csp_demo(ax):
+    ax.set_title("CSP feature split", fontsize=11, weight="bold")
+    ax.axis("off")
+    labels = ["input", "part A\nshortcut", "part B\nconv blocks", "concat"]
+    coords = [(0.5,2.0),(3.0,2.6),(3.0,1.35),(6.0,2.0)]
+    for (x,y), label in zip(coords, labels):
+        ax.add_patch(Rectangle((x, y), 1.6, 0.65, facecolor="#dcfce7", edgecolor="#16a34a", linewidth=1.5))
+        ax.text(x+0.8,y+0.325,label,ha="center",va="center",fontsize=8.5,weight="bold")
+    ax.annotate("", xy=(3.0,2.92), xytext=(2.1,2.33), arrowprops={"arrowstyle":"-|>"})
+    ax.annotate("", xy=(3.0,1.67), xytext=(2.1,2.33), arrowprops={"arrowstyle":"-|>"})
+    ax.annotate("", xy=(6.0,2.33), xytext=(4.6,2.92), arrowprops={"arrowstyle":"-|>"})
+    ax.annotate("", xy=(6.0,2.33), xytext=(4.6,1.67), arrowprops={"arrowstyle":"-|>"})
+    ax.set_xlim(0,8)
+    ax.set_ylim(1.0,3.5)
+
+
+def _draw_decoupled_head_demo(ax):
+    ax.set_title("Decoupled detection head", fontsize=11, weight="bold")
+    ax.axis("off")
+    ax.add_patch(Rectangle((0.5, 2.0), 1.8, 0.7, facecolor="#dbeafe", edgecolor="#2563eb", linewidth=1.5))
+    ax.text(1.4,2.35,"shared feature",ha="center",va="center",weight="bold",fontsize=9)
+    for label, y in [("class branch",2.8),("box branch",1.25)]:
+        ax.add_patch(Rectangle((4.0, y), 2.0, 0.65, facecolor="#fef3c7", edgecolor="#d97706", linewidth=1.5))
+        ax.text(5.0,y+0.325,label,ha="center",va="center",weight="bold",fontsize=9)
+        ax.annotate("", xy=(4.0,y+0.325), xytext=(2.3,2.35), arrowprops={"arrowstyle":"-|>"})
+    ax.set_xlim(0,7)
+    ax.set_ylim(1.0,3.8)
+
+
+def _draw_assignment_demo(ax):
+    ax.set_title("Dynamic label assignment", fontsize=11, weight="bold")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(1, 0)
+    ax.set_aspect("equal")
+    ax.grid(True, alpha=0.2)
+    gt = Rectangle((0.35,0.30),0.3,0.3,fill=False,edgecolor="#dc2626",linewidth=2.2)
+    ax.add_patch(gt)
+    pts = np.array([[.28,.35],[.42,.42],[.52,.46],[.72,.62],[.58,.27]])
+    costs = np.array([.42,.12,.08,.55,.25])
+    for (x,y), cost in zip(pts,costs):
+        color = "#16a34a" if cost < .2 else "#2563eb"
+        ax.scatter([x],[y],s=80,color=color,edgecolor="white",zorder=3)
+        ax.text(x+.02,y,f"{cost:.2f}",fontsize=8)
+    ax.text(0.5,0.12,"low-cost candidates become positives",ha="center",fontsize=9)
+
+
+def _draw_scaling_demo(ax):
+    ax.set_title("Model scaling", fontsize=11, weight="bold")
+    ax.set_xlabel("width multiplier")
+    ax.set_ylabel("relative compute")
+    widths = np.array([0.5, 0.75, 1.0, 1.25])
+    compute = widths ** 2 * np.array([0.7, 0.9, 1.0, 1.15])
+    ax.plot(widths, compute, marker="o", color="#2563eb", linewidth=2)
+    ax.grid(True, alpha=0.25)
+
+
+def _draw_c2f_demo(ax):
+    ax.set_title("C2f feature reuse", fontsize=11, weight="bold")
+    ax.axis("off")
+    xs = [0.4, 2.4, 4.4, 6.4]
+    labels = ["split", "bottleneck 1", "bottleneck 2", "concat"]
+    for x,label in zip(xs,labels):
+        ax.add_patch(Rectangle((x,1.8),1.5,0.7,facecolor="#dcfce7",edgecolor="#16a34a",linewidth=1.5))
+        ax.text(x+.75,2.15,label,ha="center",va="center",fontsize=8.5,weight="bold")
+    for x1,x2 in [(1.9,2.4),(3.9,4.4),(5.9,6.4)]:
+        ax.annotate("", xy=(x2,2.15), xytext=(x1,2.15), arrowprops={"arrowstyle":"-|>"})
+    ax.text(4.0,1.25,"intermediate features are reused before concat",ha="center",fontsize=9)
+    ax.set_xlim(0,8.4)
+    ax.set_ylim(1.0,3.0)
+
+
+def _draw_dfl_demo(ax):
+    ax.set_title("Distribution Focal Loss intuition", fontsize=11, weight="bold")
+    bins = np.arange(8)
+    probs = np.exp(-0.5 * (bins - 3.4) ** 2)
+    probs = probs / probs.sum()
+    ax.bar(bins, probs, color="#93c5fd", edgecolor="#2563eb")
+    ax.axvline((bins * probs).sum(), color="#dc2626", linewidth=2, label="expected distance")
+    ax.set_xlabel("distance bin")
+    ax.set_ylabel("probability")
+    ax.legend()
+
+
+def _draw_pipeline_demo(ax):
+    ax.set_title("Training / inference / export pipeline", fontsize=11, weight="bold")
+    ax.axis("off")
+    labels = ["dataset", "train", "validate", "predict", "export"]
+    for i,label in enumerate(labels):
+        x = 0.35 + i*1.55
+        ax.add_patch(Rectangle((x,1.7),1.2,0.7,facecolor="#dbeafe",edgecolor="#2563eb",linewidth=1.4))
+        ax.text(x+.6,2.05,label,ha="center",va="center",fontsize=8.5,weight="bold")
+        if i < len(labels)-1:
+            ax.annotate("", xy=(x+1.55,2.05), xytext=(x+1.2,2.05), arrowprops={"arrowstyle":"-|>"})
+    ax.set_xlim(0,8.2)
+    ax.set_ylim(1.2,3.0)
+
+
+def _draw_efficiency_demo(ax):
+    ax.set_title("Efficiency trade-off", fontsize=11, weight="bold")
+    names = ["model", "postprocess", "export", "runtime"]
+    vals = [0.45, 0.25, 0.15, 0.15]
+    ax.bar(names, vals, color=["#2563eb", "#16a34a", "#d97706", "#dc2626"])
+    ax.set_ylabel("latency / complexity share")
+    ax.set_ylim(0, 0.6)
+    ax.grid(True, axis="y", alpha=0.25)
+
+
+def _draw_optimizer_demo(ax):
+    ax.set_title("Optimizer step", fontsize=11, weight="bold")
+    ax.axis("off")
+    labels = ["gradient", "momentum / update rule", "new weights"]
+    xs = [0.7, 3.0, 6.0]
+    for x,label in zip(xs,labels):
+        ax.add_patch(Rectangle((x,1.7),1.8,0.75,facecolor="#fef3c7",edgecolor="#d97706",linewidth=1.5))
+        ax.text(x+.9,2.075,label,ha="center",va="center",fontsize=8.5,weight="bold")
+    ax.annotate("", xy=(3.0,2.075), xytext=(2.5,2.075), arrowprops={"arrowstyle":"-|>"})
+    ax.annotate("", xy=(6.0,2.075), xytext=(4.8,2.075), arrowprops={"arrowstyle":"-|>"})
+    ax.set_xlim(0,8.5)
+    ax.set_ylim(1.2,3.0)
+
+
+_ELEMENT_DRAWERS = {
+    "anchor": _draw_anchor_demo,
+    "kmeans": _draw_iou_distance_demo,
+    "bn": _draw_bn_demo,
+    "passthrough": _draw_passthrough_demo,
+    "hierarchy": _draw_hierarchy_demo,
+    "residual": _draw_residual_demo,
+    "multiscale": _draw_multiscale_demo,
+    "fusion": _draw_spp_pan_demo,
+    "logistic": _draw_logistic_demo,
+    "csp": _draw_csp_demo,
+    "spp_pan": _draw_spp_pan_demo,
+    "mish": lambda ax: _draw_activation_demo(ax, "mish"),
+    "ciou": _draw_ciou_demo,
+    "mosaic": _draw_mosaic_demo,
+    "pipeline": _draw_pipeline_demo,
+    "focus": _draw_focus_demo,
+    "reparam": _draw_reparam_demo,
+    "decoupled": _draw_decoupled_head_demo,
+    "assignment": _draw_assignment_demo,
+    "efficiency": _draw_efficiency_demo,
+    "elan": _draw_elan_demo,
+    "scaling": _draw_scaling_demo,
+    "anchor_free": _draw_anchor_free_demo,
+    "c2f": _draw_c2f_demo,
+    "dfl": _draw_dfl_demo,
+    "pgi": _draw_pgi_demo,
+    "nms_free": _draw_nms_free_demo,
+    "attention": lambda ax: _draw_attention_demo(ax, area=False),
+    "area_attention": lambda ax: _draw_attention_demo(ax, area=True),
+    "hypergraph": _draw_hypergraph_demo,
+    "deployment": _draw_deployment_demo,
+    "optimizer": _draw_optimizer_demo,
+}
+
+
+def display_yolo_element_demo(version, element):
+    """Draw a compact demo for one named technical element."""
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import Rectangle as _Rectangle
+    except ImportError as exc:
+        raise ImportError("Install matplotlib to display YOLO element demos") from exc
+
+    globals()["Rectangle"] = _Rectangle
+    if element not in _ELEMENT_DRAWERS:
+        raise ValueError(f"No element demo for {version=}, {element=}")
+    fig, ax = plt.subplots(figsize=(8.5, 4.2))
+    _ELEMENT_DRAWERS[element](ax)
+    fig.tight_layout()
+    return _display_figure(fig)

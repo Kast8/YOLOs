@@ -18,6 +18,24 @@ __all__ = [
 import numpy as np
 
 
+def _display_figure(fig):
+    try:
+        from IPython.display import display
+        display(fig)
+    except Exception:
+        try:
+            fig.show()
+        except Exception:
+            pass
+    finally:
+        try:
+            import matplotlib.pyplot as plt
+            plt.close(fig)
+        except Exception:
+            pass
+    return None
+
+
 def relu(x):
     x = np.asarray(x, dtype=float)
     return np.maximum(x, 0.0)
@@ -74,7 +92,7 @@ def display_leaky_relu_demo(alpha=0.1):
     axes[1].grid(True, alpha=0.25)
 
     fig.tight_layout()
-    return fig
+    return _display_figure(fig)
 
 
 def darknet_file_roles():
@@ -123,7 +141,7 @@ def display_darknet_format_demo():
 
     ax.text(6.5, 4.22, "Darknet format = architecture file (.cfg) + learned weights file (.weights)", ha="center", va="top", fontsize=12, weight="bold")
     fig.tight_layout()
-    return fig
+    return _display_figure(fig)
 
 
 def nms_demo_boxes():
@@ -212,4 +230,4 @@ def display_nms_demo(nms_result):
         axes[1].text(x1, y1 - 0.015, f"{b['id']} {label}", color=color, fontsize=9, weight="bold", alpha=alpha)
 
     fig.tight_layout()
-    return fig
+    return _display_figure(fig)
