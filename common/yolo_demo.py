@@ -859,6 +859,55 @@ def _draw_mosaic_demo(ax):
     ax.text(1, -0.12, "one training input mixes contexts and scales", ha="center", va="top", fontsize=9)
 
 
+def _draw_yolov4_overview_demo(ax):
+    ax.set_title("YOLOv4: YOLOv3 detector + stronger backbone, neck, loss, and training", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    def block(x, y, w, h, label, face, edge, fontsize=7.6):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.35))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center",
+                fontsize=fontsize, weight="bold", linespacing=1.12)
+
+    def arrow(x1, y1, x2, y2, color="#475569"):
+        ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
+                    arrowprops={"arrowstyle": "-|>", "color": color, "linewidth": 1.25})
+
+    blue = ("#dbeafe", "#2563eb")
+    green = ("#dcfce7", "#16a34a")
+    yellow = ("#fef3c7", "#d97706")
+    red = ("#fee2e2", "#dc2626")
+    purple = ("#f3e8ff", "#9333ea")
+    gray = ("#f8fafc", "#64748b")
+
+    ax.text(0.45, 3.42, "YOLOv3 baseline", fontsize=9.2, weight="bold", color="#334155")
+    block(0.45, 2.58, 1.55, 0.56, "Darknet-53\nbackbone", *blue)
+    block(2.35, 2.58, 1.55, 0.56, "FPN-like\n3-scale fusion", *green)
+    block(4.25, 2.58, 1.55, 0.56, "anchor heads\n13/26/52", *yellow)
+    block(6.15, 2.58, 1.55, 0.56, "IoU / coord\nloss + NMS", *gray)
+    for x1, x2 in [(2.0, 2.35), (3.9, 4.25), (5.8, 6.15)]:
+        arrow(x1, 2.86, x2, 2.86)
+
+    ax.text(0.45, 1.94, "YOLOv4 changes from v3", fontsize=9.2, weight="bold", color="#334155")
+    block(0.45, 1.08, 1.55, 0.64, "CSPDarknet53\nless duplicate\ngradient flow", *blue, fontsize=7.0)
+    block(2.35, 1.08, 1.55, 0.64, "SPP + PAN\nwider context\nbidirectional neck", *green, fontsize=7.0)
+    block(4.25, 1.08, 1.55, 0.64, "same YOLO\nanchor heads\n3 scales", *yellow, fontsize=7.0)
+    block(6.15, 1.08, 1.55, 0.64, "CIoU loss\nMosaic / BoF\nBoS", *red, fontsize=7.0)
+    for x1, x2 in [(2.0, 2.35), (3.9, 4.25), (5.8, 6.15)]:
+        arrow(x1, 1.4, x2, 1.4)
+
+    for x in [1.225, 3.125, 5.025, 6.925]:
+        arrow(x, 2.58, x, 1.72, color="#9333ea")
+    ax.text(1.22, 0.55, "backbone\nreplaced", ha="center", va="center", fontsize=7.2, color="#1e40af")
+    ax.text(3.12, 0.55, "neck\nstrengthened", ha="center", va="center", fontsize=7.2, color="#166534")
+    ax.text(5.02, 0.55, "head mostly\nkept", ha="center", va="center", fontsize=7.2, color="#92400e")
+    ax.text(6.92, 0.55, "training/loss\nupgraded", ha="center", va="center", fontsize=7.2, color="#991b1b")
+
+    ax.text(4.05, 3.82, "The main v4 story is not a new output format; it is a stronger full detection recipe.",
+            ha="center", va="center", fontsize=8.3, color="#334155")
+    ax.set_xlim(0.1, 8.05)
+    ax.set_ylim(0.15, 4.05)
+
+
 def _draw_focus_demo(ax):
     ax.set_title("Focus: spatial pixels -> channels", fontsize=11, weight="bold")
     ax.axis("off")
@@ -1023,7 +1072,7 @@ def display_yolo_technology_demo(version):
     drawers = {
         2: _draw_yolov2_overview_demo,
         3: _draw_yolov3_overview_demo,
-        4: _draw_mosaic_demo,
+        4: _draw_yolov4_overview_demo,
         5: _draw_focus_demo,
         6: _draw_reparam_demo,
         7: _draw_elan_demo,
@@ -1177,29 +1226,113 @@ def _draw_logistic_demo(ax):
 
 
 def _draw_spp_pan_demo(ax):
-    ax.set_title("SPP + PAN feature aggregation", fontsize=11, weight="bold")
+    ax.set_title("YOLOv4 neck: SPP, FPN top-down, PAN bottom-up", fontsize=11, weight="bold")
     ax.axis("off")
-    labels = ["feature", "SPP\n1/5/9/13 pools", "PAN\ntop-down + bottom-up", "detection heads"]
-    xs = [0.4, 2.5, 4.9, 7.1]
-    for x, label in zip(xs, labels):
-        ax.add_patch(Rectangle((x, 1.5), 1.6, 0.9, facecolor="#dbeafe", edgecolor="#2563eb", linewidth=1.5))
-        ax.text(x + 0.8, 1.95, label, ha="center", va="center", fontsize=8.5, weight="bold")
-    for x1, x2 in [(2.0,2.5),(4.1,4.9),(6.5,7.1)]:
-        ax.annotate("", xy=(x2, 1.95), xytext=(x1, 1.95), arrowprops={"arrowstyle": "-|>"})
-    ax.set_xlim(0, 9)
-    ax.set_ylim(1.0, 3.0)
+
+    def block(x, y, w, h, label, face, edge, fontsize=7.2):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.35))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center",
+                fontsize=fontsize, weight="bold", linespacing=1.12)
+
+    def arrow(x1, y1, x2, y2, color="#475569", label=None, label_xy=None):
+        ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
+                    arrowprops={"arrowstyle": "-|>", "color": color, "linewidth": 1.35,
+                                "shrinkA": 1, "shrinkB": 1})
+        if label:
+            lx, ly = label_xy if label_xy is not None else ((x1 + x2) / 2, (y1 + y2) / 2)
+            ax.text(lx, ly, label, ha="center", va="center", fontsize=6.6, color=color,
+                    bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.8, "pad": 0.4})
+
+    blue = ("#dbeafe", "#2563eb")
+    yellow = ("#fef3c7", "#d97706")
+    green = ("#dcfce7", "#16a34a")
+    red = ("#fee2e2", "#dc2626")
+    gray = ("#f8fafc", "#64748b")
+
+    # Row centers: high resolution at top, low resolution at bottom.
+    y3, y4, y5 = 3.0, 2.0, 1.0
+    h = 0.5
+    x_c, x_p, x_n, x_h = 0.35, 2.55, 4.85, 7.05
+    w = 1.45
+
+    ax.text(x_c + w / 2, 3.55, "backbone", ha="center", fontsize=7.5, color="#1e40af", weight="bold")
+    ax.text(x_p + w / 2, 3.55, "SPP + FPN", ha="center", fontsize=7.5, color="#166534", weight="bold")
+    ax.text(x_n + w / 2, 3.55, "PAN neck", ha="center", fontsize=7.5, color="#991b1b", weight="bold")
+    ax.text(x_h + w / 2, 3.55, "heads", ha="center", fontsize=7.5, color="#475569", weight="bold")
+
+    block(x_c, y3 - h / 2, w, h, "C3\n52x52", *blue)
+    block(x_c, y4 - h / 2, w, h, "C4\n26x26", *blue)
+    block(x_c, y5 - h / 2, w, h, "C5\n13x13", *blue)
+
+    block(x_p, y5 - h / 2, w, h, "SPP + P5\n13x13", *yellow)
+    block(x_p, y4 - h / 2, w, h, "P4\nconcat(C4, up P5)\n26x26", *green, fontsize=6.5)
+    block(x_p, y3 - h / 2, w, h, "P3\nconcat(C3, up P4)\n52x52", *green, fontsize=6.5)
+
+    block(x_n, y3 - h / 2, w, h, "N3\nfrom P3\n52x52", *red, fontsize=6.6)
+    block(x_n, y4 - h / 2, w, h, "N4\nconcat(P4, down N3)\n26x26", *red, fontsize=6.2)
+    block(x_n, y5 - h / 2, w, h, "N5\nconcat(P5, down N4)\n13x13", *red, fontsize=6.2)
+
+    block(x_h, y3 - h / 2, w, h, "small\nhead", *gray)
+    block(x_h, y4 - h / 2, w, h, "medium\nhead", *gray)
+    block(x_h, y5 - h / 2, w, h, "large\nhead", *gray)
+
+    # Backbone to SPP/FPN lateral connections.
+    arrow(x_c + w, y5, x_p, y5, blue[1])
+    arrow(x_c + w, y4, x_p, y4, blue[1])
+    arrow(x_c + w, y3, x_p, y3, blue[1])
+
+    # FPN top-down path: low resolution to high resolution by upsampling.
+    arrow(x_p + w / 2, y5 + h / 2, x_p + w / 2, y4 - h / 2, green[1], "up x2", (x_p + w / 2 + 0.34, 1.5))
+    arrow(x_p + w / 2, y4 + h / 2, x_p + w / 2, y3 - h / 2, green[1], "up x2", (x_p + w / 2 + 0.34, 2.5))
+
+    # PAN bottom-up path: high resolution to low resolution by downsampling.
+    arrow(x_p + w, y3, x_n, y3, red[1])
+    arrow(x_n + w / 2, y3 - h / 2, x_n + w / 2, y4 + h / 2, red[1], "down x2", (x_n + w / 2 + 0.42, 2.5))
+    arrow(x_p + w, y4, x_n, y4, red[1])
+    arrow(x_n + w / 2, y4 - h / 2, x_n + w / 2, y5 + h / 2, red[1], "down x2", (x_n + w / 2 + 0.42, 1.5))
+    arrow(x_p + w, y5, x_n, y5, red[1])
+
+    # Heads consume PAN features only; no arrows return from heads.
+    arrow(x_n + w, y3, x_h, y3, gray[1])
+    arrow(x_n + w, y4, x_h, y4, gray[1])
+    arrow(x_n + w, y5, x_h, y5, gray[1])
+
+    ax.text(2.0, 0.35, "SPP is applied on deepest C5 and keeps 13x13 H,W",
+            ha="center", va="center", fontsize=7.0, color="#92400e")
+    ax.text(3.7, 3.28, "green = FPN top-down", ha="center", va="center", fontsize=7.0, color="#166534")
+    ax.text(5.85, 3.28, "red = PAN bottom-up", ha="center", va="center", fontsize=7.0, color="#991b1b")
+    ax.set_xlim(0.0, 8.75)
+    ax.set_ylim(0.15, 3.75)
 
 
 def _draw_activation_demo(ax, kind="mish"):
-    ax.set_title(kind.capitalize() + " activation", fontsize=11, weight="bold")
-    x = np.linspace(-5, 5, 300)
     if kind == "mish":
-        y = x * np.tanh(np.log1p(np.exp(x)))
+        ax.set_title("Activation comparison: ReLU vs GELU vs Mish", fontsize=11, weight="bold")
     else:
-        y = np.maximum(x, 0)
-    ax.plot(x, y, color="#2563eb", linewidth=2)
-    ax.axhline(0, color="#64748b", linewidth=1)
-    ax.axvline(0, color="#64748b", linewidth=1)
+        ax.set_title(kind.capitalize() + " activation", fontsize=11, weight="bold")
+
+    x = np.linspace(-5, 5, 500)
+    relu = np.maximum(x, 0)
+    # Tanh approximation of GELU used in many implementations.
+    gelu = 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * x ** 3)))
+    mish = x * np.tanh(np.log1p(np.exp(x)))
+
+    if kind == "mish":
+        ax.plot(x, relu, color="#64748b", linewidth=1.8, linestyle="--", label="ReLU: max(0, x)")
+        ax.plot(x, gelu, color="#d97706", linewidth=2.0, label="GELU: x Phi(x)")
+        ax.plot(x, mish, color="#2563eb", linewidth=2.4, label="Mish: x tanh(softplus(x))")
+        ax.text(-3.65, -0.55, "negative side\nkept smoothly", ha="center", va="center", fontsize=8, color="#1d4ed8")
+        ax.text(2.65, 2.25, "all behave\nroughly like x", ha="center", va="center", fontsize=8, color="#334155")
+        ax.legend(loc="upper left", fontsize=8, frameon=True)
+    elif kind == "relu":
+        ax.plot(x, relu, color="#2563eb", linewidth=2.2)
+    else:
+        ax.plot(x, mish, color="#2563eb", linewidth=2.2)
+
+    ax.axhline(0, color="#94a3b8", linewidth=1)
+    ax.axvline(0, color="#94a3b8", linewidth=1)
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(-1.0, 5.0)
     ax.grid(True, alpha=0.25)
     ax.set_xlabel("x")
     ax.set_ylabel("f(x)")
@@ -1219,19 +1352,48 @@ def _draw_ciou_demo(ax):
 
 
 def _draw_csp_demo(ax):
-    ax.set_title("CSP feature split", fontsize=11, weight="bold")
+    ax.set_title("CSP block: split channels, shortcut one part, transform the other", fontsize=11, weight="bold")
     ax.axis("off")
-    labels = ["input", "part A\nshortcut", "part B\nconv blocks", "concat"]
-    coords = [(0.5,2.0),(3.0,2.6),(3.0,1.35),(6.0,2.0)]
-    for (x,y), label in zip(coords, labels):
-        ax.add_patch(Rectangle((x, y), 1.6, 0.65, facecolor="#dcfce7", edgecolor="#16a34a", linewidth=1.5))
-        ax.text(x+0.8,y+0.325,label,ha="center",va="center",fontsize=8.5,weight="bold")
-    ax.annotate("", xy=(3.0,2.92), xytext=(2.1,2.33), arrowprops={"arrowstyle":"-|>"})
-    ax.annotate("", xy=(3.0,1.67), xytext=(2.1,2.33), arrowprops={"arrowstyle":"-|>"})
-    ax.annotate("", xy=(6.0,2.33), xytext=(4.6,2.92), arrowprops={"arrowstyle":"-|>"})
-    ax.annotate("", xy=(6.0,2.33), xytext=(4.6,1.67), arrowprops={"arrowstyle":"-|>"})
-    ax.set_xlim(0,8)
-    ax.set_ylim(1.0,3.5)
+
+    def block(x, y, w, h, label, face, edge, fontsize=8.2):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.5))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center",
+                fontsize=fontsize, weight="bold", linespacing=1.15)
+
+    def arrow(x1, y1, x2, y2):
+        ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
+                    arrowprops={"arrowstyle": "-|>", "color": "#475569", "linewidth": 1.35})
+
+    block(0.35, 1.85, 1.3, 0.7, "input\nfeature C", "#dbeafe", "#2563eb")
+    block(2.25, 2.65, 1.35, 0.62, "split A\nC/2", "#ecfeff", "#0891b2")
+    block(2.25, 0.95, 1.35, 0.62, "split B\nC/2", "#ecfeff", "#0891b2")
+
+    block(4.0, 2.65, 1.45, 0.62, "1x1 Conv\nshortcut", "#dcfce7", "#16a34a")
+    block(3.85, 1.45, 1.35, 0.62, "1x1 Conv", "#fef3c7", "#d97706")
+    block(5.55, 1.25, 1.7, 1.02, "residual /\nconv blocks\nx N", "#fee2e2", "#dc2626")
+    block(7.6, 1.45, 1.35, 0.62, "1x1 Conv", "#fef3c7", "#d97706")
+
+    block(9.7, 1.85, 1.45, 0.72, "concat\nchannels", "#f3e8ff", "#9333ea")
+    block(11.75, 1.85, 1.45, 0.72, "1x1 Conv\nfuse", "#dbeafe", "#2563eb")
+
+    arrow(1.65, 2.2, 2.25, 2.96)
+    arrow(1.65, 2.2, 2.25, 1.26)
+    arrow(3.6, 2.96, 4.0, 2.96)
+    arrow(3.6, 1.26, 3.85, 1.76)
+    arrow(5.2, 1.76, 5.55, 1.76)
+    arrow(7.25, 1.76, 7.6, 1.76)
+    arrow(5.45, 2.96, 9.7, 2.28)
+    arrow(8.95, 1.76, 9.7, 2.12)
+    arrow(11.15, 2.21, 11.75, 2.21)
+
+    ax.text(6.55, 3.45, "A: light path preserves features and gradients",
+            ha="center", va="center", fontsize=8.4, color="#166534")
+    ax.text(6.45, 0.58, "B: only part of the channels goes through heavy blocks",
+            ha="center", va="center", fontsize=8.4, color="#991b1b")
+    ax.text(10.45, 1.42, "concat increases channels;\nfuse conv mixes them",
+            ha="center", va="top", fontsize=8.1, color="#581c87")
+    ax.set_xlim(0, 13.55)
+    ax.set_ylim(0.25, 3.75)
 
 
 def _draw_decoupled_head_demo(ax):
