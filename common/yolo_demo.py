@@ -787,6 +787,64 @@ def _draw_multiscale_demo(ax):
     ax.set_ylim(0, 4.2)
 
 
+
+def _draw_yolov3_fusion_demo(ax):
+    ax.set_title("YOLOv3 FPN-like fusion: upsample + concat", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    def block(x, y, w, h, label, face, edge):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.6))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=8.5, weight="bold", linespacing=1.25)
+
+    block(0.4, 2.6, 2.1, 0.7, "deep feature\n13 x 13", "#dbeafe", "#2563eb")
+    block(3.0, 2.6, 1.65, 0.7, "detect\nlarge", "#fef3c7", "#d97706")
+    block(0.4, 1.45, 2.1, 0.7, "upsample x2\n26 x 26", "#dcfce7", "#16a34a")
+    block(3.0, 1.45, 2.1, 0.7, "concat with\nmid feature", "#f3e8ff", "#9333ea")
+    block(5.65, 1.45, 1.65, 0.7, "detect\nmedium", "#fef3c7", "#d97706")
+    block(0.4, 0.3, 2.1, 0.7, "upsample x2\n52 x 52", "#dcfce7", "#16a34a")
+    block(3.0, 0.3, 2.1, 0.7, "concat with\nshallow feature", "#f3e8ff", "#9333ea")
+    block(5.65, 0.3, 1.65, 0.7, "detect\nsmall", "#fef3c7", "#d97706")
+
+    arrows = [
+        ((2.5, 2.95), (3.0, 2.95)),
+        ((1.45, 2.6), (1.45, 2.15)),
+        ((2.5, 1.8), (3.0, 1.8)),
+        ((5.1, 1.8), (5.65, 1.8)),
+        ((1.45, 1.45), (1.45, 1.0)),
+        ((2.5, 0.65), (3.0, 0.65)),
+        ((5.1, 0.65), (5.65, 0.65)),
+    ]
+    for start, end in arrows:
+        ax.annotate("", xy=end, xytext=start, arrowprops={"arrowstyle":"-|>", "color":"#475569", "linewidth":1.4})
+    ax.text(4.05, 2.35, "semantic deep features are reused at finer grids", ha="center", fontsize=9)
+    ax.set_xlim(0, 7.8)
+    ax.set_ylim(0.0, 3.55)
+
+
+def _draw_yolov3_overview_demo(ax):
+    ax.set_title("YOLOv3: one scale -> three detection scales", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    def block(x, y, w, h, label, face, edge):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.6))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=8.5, weight="bold", linespacing=1.2)
+
+    block(0.4, 2.55, 1.7, 0.65, "YOLOv2\n13 x 13", "#dbeafe", "#2563eb")
+    block(2.8, 2.55, 2.3, 0.65, "single detection\nfeature map", "#dbeafe", "#2563eb")
+    ax.annotate("", xy=(2.8, 2.875), xytext=(2.1, 2.875), arrowprops={"arrowstyle":"-|>", "color":"#475569"})
+
+    block(0.4, 1.25, 1.8, 0.65, "YOLOv3\nDarknet-53", "#dcfce7", "#16a34a")
+    block(2.85, 1.95, 1.8, 0.58, "13 x 13\nlarge objects", "#fef3c7", "#d97706")
+    block(2.85, 1.15, 1.8, 0.58, "26 x 26\nmedium objects", "#fef3c7", "#d97706")
+    block(2.85, 0.35, 1.8, 0.58, "52 x 52\nsmall objects", "#fef3c7", "#d97706")
+    block(5.4, 1.15, 2.4, 0.7, "per scale:\n3 anchors x (box + obj + class)", "#f3e8ff", "#9333ea")
+    for y in [2.24, 1.44, 0.64]:
+        ax.annotate("", xy=(2.85, y), xytext=(2.2, 1.575), arrowprops={"arrowstyle":"-|>", "color":"#475569"})
+        ax.annotate("", xy=(5.4, 1.5), xytext=(4.65, y), arrowprops={"arrowstyle":"-|>", "color":"#475569"})
+    ax.text(4.2, 3.35, "main change: predictions are made at multiple feature-map resolutions", ha="center", fontsize=9.5)
+    ax.set_xlim(0, 8.2)
+    ax.set_ylim(0.05, 3.65)
+
 def _draw_mosaic_demo(ax):
     ax.set_title("Mosaic augmentation", fontsize=11, weight="bold")
     ax.set_xlim(0, 2)
@@ -964,7 +1022,7 @@ def display_yolo_technology_demo(version):
     fig, ax = plt.subplots(figsize=(9, 4.8))
     drawers = {
         2: _draw_yolov2_overview_demo,
-        3: _draw_multiscale_demo,
+        3: _draw_yolov3_overview_demo,
         4: _draw_mosaic_demo,
         5: _draw_focus_demo,
         6: _draw_reparam_demo,
@@ -1290,6 +1348,7 @@ _ELEMENT_DRAWERS = {
     "residual": _draw_residual_demo,
     "multiscale": _draw_multiscale_demo,
     "fusion": _draw_spp_pan_demo,
+    "yolov3_fusion": _draw_yolov3_fusion_demo,
     "logistic": _draw_logistic_demo,
     "csp": _draw_csp_demo,
     "spp_pan": _draw_spp_pan_demo,
