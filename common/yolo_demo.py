@@ -992,6 +992,59 @@ def _draw_reparam_demo(ax):
     ax.set_ylim(0.65, 3.85)
 
 
+
+def _draw_yolov6_overview_demo(ax):
+    from matplotlib.patches import Rectangle
+
+    ax.set_title("YOLOv6: Rep blocks + TAL + deployment-oriented design", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    def box(x, y, w, h, text, face, edge, fontsize=7.6):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.45))
+        ax.text(x + w / 2, y + h / 2, text, ha="center", va="center",
+                fontsize=fontsize, weight="bold", linespacing=1.12)
+
+    def arrow(x1, y1, x2, y2, color="#475569", label=None, yoff=0.0):
+        ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
+                    arrowprops={"arrowstyle": "-|>", "linewidth": 1.35, "color": color})
+        if label:
+            ax.text((x1 + x2) / 2, (y1 + y2) / 2 + yoff, label,
+                    ha="center", va="center", fontsize=6.9, color=color, weight="bold")
+
+    # Context inherited from YOLOX, kept visually separate so it is not presented as v6's new part.
+    box(0.25, 2.9, 1.6, 0.55, "YOLOX context\nanchor-free / decoupled", "#f8fafc", "#94a3b8", 6.9)
+    box(0.25, 2.05, 1.6, 0.55, "SimOTA\ndynamic assign", "#f8fafc", "#94a3b8", 6.9)
+    ax.text(1.05, 3.65, "already covered", ha="center", va="center", fontsize=7.4, color="#64748b", weight="bold")
+
+    # Main v6 additions.
+    box(2.45, 3.05, 1.75, 0.62, "Rep block\ntrain: 3x3 + 1x1 + id", "#dbeafe", "#2563eb")
+    box(2.45, 2.05, 1.75, 0.62, "TAL assigner\nt = s^alpha u^beta", "#dcfce7", "#16a34a")
+    box(2.45, 1.05, 1.75, 0.62, "Latency-aware\nefficient design", "#fef3c7", "#d97706")
+    ax.text(3.33, 3.9, "YOLOv6 focus", ha="center", va="center", fontsize=8.3, color="#111827", weight="bold")
+
+    # Deployment side.
+    box(5.05, 3.05, 1.75, 0.62, "Deploy conv\nfused 3x3", "#bfdbfe", "#1d4ed8")
+    box(5.05, 2.05, 1.75, 0.62, "Positive samples\ncls and IoU aligned", "#bbf7d0", "#15803d", 7.1)
+    box(5.05, 1.05, 1.75, 0.62, "Runtime path\nsimple ops", "#fde68a", "#b45309")
+
+    arrow(1.85, 3.18, 2.45, 3.36, "#94a3b8")
+    arrow(1.85, 2.33, 2.45, 2.36, "#94a3b8")
+    arrow(4.2, 3.36, 5.05, 3.36, "#2563eb", "fuse at deploy", 0.22)
+    arrow(4.2, 2.36, 5.05, 2.36, "#16a34a", "select high alignment", 0.22)
+    arrow(4.2, 1.36, 5.05, 1.36, "#d97706", "optimize actual latency", 0.22)
+
+    # Small equation card for the TAL part.
+    box(0.55, 0.68, 6.0, 0.42,
+        "TAL: high class score s and high IoU u must coincide; SimOTA details are not repeated here",
+        "#ffffff", "#cbd5e1", 7.1)
+    ax.text(5.92, 2.84, "classification score\nshould reflect box quality", ha="center", va="center",
+            fontsize=6.9, color="#166534")
+    ax.text(5.92, 3.84, "training graph !=\ninference graph", ha="center", va="center",
+            fontsize=6.9, color="#1e40af")
+
+    ax.set_xlim(0, 7.2)
+    ax.set_ylim(0.45, 4.15)
+
 def _draw_elan_demo(ax):
     ax.set_title("ELAN/GELAN-style multi-path aggregation", fontsize=11, weight="bold")
     ax.axis("off")
@@ -1121,7 +1174,7 @@ def display_yolo_technology_demo(version):
         3: _draw_yolov3_overview_demo,
         4: _draw_yolov4_overview_demo,
         5: _draw_focus_demo,
-        6: _draw_reparam_demo,
+        6: _draw_yolov6_overview_demo,
         7: _draw_elan_demo,
         8: _draw_anchor_free_demo,
         9: _draw_pgi_demo,
