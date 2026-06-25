@@ -14,8 +14,27 @@ def _iou(box, boxes):
     return inter / np.maximum(a + b - inter, 1e-9)
 
 
-def run_demo(version: int) -> dict:
+def run_demo(version: int | str) -> dict:
     rng = np.random.RandomState(7)
+    if version == "yolox":
+        version = 8
+    if version == "yolo-nas":
+        candidates = [
+            {"model": "A", "map": 44.0, "latency_ms": 2.8},
+            {"model": "B", "map": 46.2, "latency_ms": 4.1},
+            {"model": "C", "map": 45.0, "latency_ms": 5.4},
+        ]
+        pareto = [c for c in candidates if not any(
+            d["map"] >= c["map"] and d["latency_ms"] <= c["latency_ms"] and d != c
+            for d in candidates
+        )]
+        return {"search_candidates": candidates, "pareto_frontier": pareto}
+    if version == "rt-detr":
+        queries = np.array([[.9, .1], [.2, .8], [.6, .4]])
+        gt = np.array([[1, 0], [0, 1]])
+        cost = 1 - queries @ gt.T
+        assigned = cost.argmin(0).tolist()
+        return {"object_queries": queries.tolist(), "matching_cost": cost.tolist(), "one_to_one_assignment": assigned, "nms": False}
     if version == 1:
         centers = np.array([[.12, .20], [.51, .47], [.88, .91]])
         cells = (centers * 7).astype(int)

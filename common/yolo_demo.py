@@ -929,20 +929,67 @@ def _draw_focus_demo(ax):
 
 
 def _draw_reparam_demo(ax):
-    ax.set_title("Re-parameterization", fontsize=11, weight="bold")
+    ax.set_title("Re-parameterization: train-time branches -> one deploy 3x3 Conv", fontsize=11, weight="bold")
     ax.axis("off")
-    labels = ["3x3 conv", "1x1 conv", "identity/BN", "fused 3x3 conv"]
-    xs = [0.4, 0.4, 0.4, 5.0]
-    ys = [3.0, 2.0, 1.0, 2.0]
-    for x, y, label in zip(xs, ys, labels):
-        ax.add_patch(Rectangle((x, y), 2.0, 0.55, facecolor="#dbeafe" if x < 5 else "#dcfce7", edgecolor="#2563eb", linewidth=1.5))
-        ax.text(x + 1.0, y + 0.275, label, ha="center", va="center", fontsize=9, weight="bold")
-    for y in ys[:3]:
-        ax.annotate("", xy=(5.0, 2.28), xytext=(2.4, y + 0.275), arrowprops={"arrowstyle": "-|>", "color": "#475569"})
-    ax.text(3.65, 3.55, "train-time branches", ha="center", fontsize=9)
-    ax.text(6.0, 1.5, "deploy-time single op", ha="center", fontsize=9)
-    ax.set_xlim(0, 8)
-    ax.set_ylim(0.7, 4)
+
+    def block(x, y, w, h, label, face, edge, fontsize=7.6):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.35))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center",
+                fontsize=fontsize, weight="bold", linespacing=1.1)
+
+    def arrow(x1, y1, x2, y2, color="#475569"):
+        ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
+                    arrowprops={"arrowstyle": "-|>", "color": color, "linewidth": 1.25})
+
+    def kernel_grid(x, y, values, title, edge="#334155", fill="#f8fafc"):
+        cell = 0.18
+        ax.text(x + 0.27, y + 0.66, title, ha="center", va="bottom", fontsize=6.8, weight="bold", color=edge)
+        for r in range(3):
+            for c in range(3):
+                v = values[r][c]
+                fc = fill if v else "#ffffff"
+                ax.add_patch(Rectangle((x + c * cell, y + (2 - r) * cell), cell, cell,
+                                       facecolor=fc, edgecolor=edge, linewidth=0.8))
+                if v:
+                    ax.text(x + c * cell + cell / 2, y + (2 - r) * cell + cell / 2, v,
+                            ha="center", va="center", fontsize=5.8, weight="bold", color=edge)
+
+    blue = ("#dbeafe", "#2563eb")
+    yellow = ("#fef3c7", "#d97706")
+    green = ("#dcfce7", "#16a34a")
+    purple = ("#f3e8ff", "#9333ea")
+
+    # Training graph branches.
+    block(0.35, 2.85, 1.35, 0.52, "3x3 Conv\n+ BN", *blue)
+    block(0.35, 1.95, 1.35, 0.52, "1x1 Conv\n+ BN", *yellow)
+    block(0.35, 1.05, 1.35, 0.52, "Identity\n+ BN", *purple)
+    ax.text(1.02, 3.62, "train-time branches", ha="center", fontsize=8.2, color="#334155", weight="bold")
+
+    # Equivalent kernels after folding BN.
+    block(2.35, 2.86, 1.0, 0.48, "fold BN", "#f8fafc", "#64748b", fontsize=7.0)
+    block(2.35, 1.96, 1.0, 0.48, "fold BN", "#f8fafc", "#64748b", fontsize=7.0)
+    block(2.35, 1.06, 1.0, 0.48, "fold BN", "#f8fafc", "#64748b", fontsize=7.0)
+    for y in [3.11, 2.21, 1.31]:
+        arrow(1.7, y, 2.35, y)
+
+    kernel_grid(3.85, 2.78, [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"]], "3x3 kernel", "#2563eb", "#dbeafe")
+    kernel_grid(3.85, 1.88, [["", "", ""], ["", "w", ""], ["", "", ""]], "1x1 padded", "#d97706", "#fef3c7")
+    kernel_grid(3.85, 0.98, [["", "", ""], ["", "1", ""], ["", "", ""]], "identity padded", "#9333ea", "#f3e8ff")
+    for y in [3.11, 2.21, 1.31]:
+        arrow(3.35, y, 3.85, y)
+
+    ax.text(4.9, 2.22, "+", ha="center", va="center", fontsize=18, weight="bold", color="#334155")
+    arrow(4.75, 2.22, 5.55, 2.22)
+
+    kernel_grid(5.65, 1.88, [["a", "b", "c"], ["d", "e+w+1", "f"], ["g", "h", "i"]], "summed 3x3", "#16a34a", "#dcfce7")
+    block(6.65, 1.95, 1.55, 0.56, "single 3x3 Conv\nfor inference", *green, fontsize=7.4)
+    arrow(6.22, 2.22, 6.65, 2.22, "#16a34a")
+
+    ax.text(5.05, 3.53, "1x1 and identity are embedded at the center of a 3x3 kernel",
+            ha="center", va="center", fontsize=7.7, color="#334155")
+    ax.text(6.9, 1.35, "same output shape\nfewer runtime ops", ha="center", va="center", fontsize=7.2, color="#166534")
+    ax.set_xlim(0, 8.45)
+    ax.set_ylim(0.65, 3.85)
 
 
 def _draw_elan_demo(ax):
@@ -1409,21 +1456,101 @@ def _draw_decoupled_head_demo(ax):
     ax.set_ylim(1.0,3.8)
 
 
+def _draw_anchor_point_grid_demo(ax):
+    ax.set_title("Grid point, anchor box, and anchor point", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    def draw_grid(x0, y0, size, n=4):
+        step = size / n
+        for i in range(n + 1):
+            ax.plot([x0, x0 + size], [y0 + i * step, y0 + i * step], color="#cbd5e1", linewidth=1)
+            ax.plot([x0 + i * step, x0 + i * step], [y0, y0 + size], color="#cbd5e1", linewidth=1)
+        pts = []
+        for r in range(n):
+            for c in range(n):
+                pts.append((x0 + (c + 0.5) * step, y0 + (r + 0.5) * step))
+        xs, ys = zip(*pts)
+        ax.scatter(xs, ys, s=18, color="#64748b", zorder=3)
+        return step
+
+    def rect_center(cx, cy, w, h, edge, linestyle="-", lw=1.8):
+        ax.add_patch(Rectangle((cx - w / 2, cy - h / 2), w, h, fill=False,
+                               edgecolor=edge, linewidth=lw, linestyle=linestyle))
+
+    # Left: anchor-based detector. Anchor boxes are width/height priors placed at grid points.
+    ax.text(1.75, 3.62, "anchor-based YOLOv2-v7 style", ha="center", fontsize=8.3, weight="bold", color="#334155")
+    step = draw_grid(0.45, 0.75, 2.6, n=4)
+    gp = (0.45 + 2.5 * step, 0.75 + 1.5 * step)
+    ax.scatter([gp[0]], [gp[1]], s=80, color="#2563eb", edgecolor="white", zorder=5)
+    rect_center(gp[0], gp[1], 0.58, 0.36, "#d97706")
+    rect_center(gp[0], gp[1], 0.34, 0.70, "#d97706", linestyle="--")
+    ax.text(gp[0] + 0.18, gp[1] - 0.25, "grid point\n(cell center)", fontsize=7.0, color="#1d4ed8")
+    ax.text(1.75, 0.38, "anchor boxes = prior widths/heights\nplaced on each grid point", ha="center", fontsize=7.2, color="#92400e")
+
+    # Right: anchor-free / anchor-point detector. The point is a reference, not a pre-sized box.
+    ax.text(6.0, 3.62, "anchor-free / anchor-point style", ha="center", fontsize=8.3, weight="bold", color="#334155")
+    draw_grid(4.7, 0.75, 2.6, n=4)
+    ap = (4.7 + 1.5 * step, 0.75 + 1.5 * step)
+    ax.scatter([ap[0]], [ap[1]], s=80, color="#16a34a", edgecolor="white", zorder=5)
+    box = (ap[0] - 0.52, ap[1] - 0.33, 1.18, 0.78)
+    ax.add_patch(Rectangle((box[0], box[1]), box[2], box[3], fill=False, edgecolor="#dc2626", linewidth=2.0))
+    # l,t,r,b distances from anchor point to box sides.
+    ax.annotate("", xy=(box[0], ap[1]), xytext=(ap[0], ap[1]), arrowprops={"arrowstyle":"<->", "color":"#16a34a", "linewidth":1.2})
+    ax.annotate("", xy=(ap[0], box[1]), xytext=(ap[0], ap[1]), arrowprops={"arrowstyle":"<->", "color":"#16a34a", "linewidth":1.2})
+    ax.annotate("", xy=(box[0] + box[2], ap[1]), xytext=(ap[0], ap[1]), arrowprops={"arrowstyle":"<->", "color":"#16a34a", "linewidth":1.2})
+    ax.annotate("", xy=(ap[0], box[1] + box[3]), xytext=(ap[0], ap[1]), arrowprops={"arrowstyle":"<->", "color":"#16a34a", "linewidth":1.2})
+    ax.text(ap[0] - 0.1, ap[1] - 0.18, "anchor point\nreference only", fontsize=7.0, color="#166534", ha="right")
+    ax.text(6.0, 0.38, "predict distances l,t,r,b\nfrom the point to box sides", ha="center", fontsize=7.2, color="#166534")
+
+    ax.text(3.82, 2.15, "same grid locations,\ndifferent meaning", ha="center", va="center", fontsize=7.4, color="#334155")
+    ax.annotate("", xy=(4.45, 2.05), xytext=(3.25, 2.05), arrowprops={"arrowstyle":"-|>", "color":"#64748b", "linewidth":1.2})
+    ax.set_xlim(0.1, 7.75)
+    ax.set_ylim(0.15, 3.9)
+
+
 def _draw_assignment_demo(ax):
-    ax.set_title("Dynamic label assignment", fontsize=11, weight="bold")
+    ax.set_title("Label assignment: candidate point vs predicted box", fontsize=11, weight="bold")
     ax.set_xlim(0, 1)
     ax.set_ylim(1, 0)
     ax.set_aspect("equal")
-    ax.grid(True, alpha=0.2)
-    gt = Rectangle((0.35,0.30),0.3,0.3,fill=False,edgecolor="#dc2626",linewidth=2.2)
-    ax.add_patch(gt)
-    pts = np.array([[.28,.35],[.42,.42],[.52,.46],[.72,.62],[.58,.27]])
-    costs = np.array([.42,.12,.08,.55,.25])
-    for (x,y), cost in zip(pts,costs):
-        color = "#16a34a" if cost < .2 else "#2563eb"
-        ax.scatter([x],[y],s=80,color=color,edgecolor="white",zorder=3)
-        ax.text(x+.02,y,f"{cost:.2f}",fontsize=8)
-    ax.text(0.5,0.12,"low-cost candidates become positives",ha="center",fontsize=9)
+    ax.grid(True, alpha=0.18)
+
+    gt_xy = (0.42, 0.28)
+    gt_w, gt_h = 0.32, 0.34
+    gt_center = (gt_xy[0] + gt_w / 2, gt_xy[1] + gt_h / 2)
+    ax.add_patch(Rectangle(gt_xy, gt_w, gt_h, fill=False, edgecolor="#dc2626", linewidth=2.4))
+    ax.scatter([gt_center[0]], [gt_center[1]], s=95, marker="*", color="#dc2626", edgecolor="white", zorder=5)
+    ax.text(gt_center[0] + 0.025, gt_center[1] - 0.035, "GT center", fontsize=7.5, color="#dc2626", weight="bold")
+
+    # Candidate A is close to the object center and predicts a good box.
+    cand_a = np.array([0.56, 0.45])
+    pred_a = (0.40, 0.29, 0.34, 0.32)
+    pred_a_center = (pred_a[0] + pred_a[2] / 2, pred_a[1] + pred_a[3] / 2)
+    ax.add_patch(Rectangle(pred_a[:2], pred_a[2], pred_a[3], fill=False, edgecolor="#2563eb", linewidth=2.0))
+    ax.scatter([cand_a[0]], [cand_a[1]], s=85, color="#2563eb", edgecolor="white", zorder=4)
+    ax.scatter([pred_a_center[0]], [pred_a_center[1]], s=70, marker="x", color="#2563eb", linewidth=2.2, zorder=4)
+    ax.annotate("", xy=pred_a_center, xytext=cand_a, arrowprops={"arrowstyle":"->", "color":"#2563eb", "linewidth":1.25})
+    ax.text(cand_a[0] - 0.17, cand_a[1] + 0.085, "candidate point A\n(anchor/grid point)", fontsize=7.3, color="#1d4ed8")
+    ax.text(pred_a_center[0] + 0.03, pred_a_center[1] + 0.05, "pred box center\nnot necessarily A", fontsize=7.1, color="#1d4ed8")
+
+    # Candidate B is far from the object center but can still regress a partly overlapping box.
+    cand_b = np.array([0.18, 0.72])
+    pred_b = (0.33, 0.35, 0.34, 0.30)
+    pred_b_center = (pred_b[0] + pred_b[2] / 2, pred_b[1] + pred_b[3] / 2)
+    ax.add_patch(Rectangle(pred_b[:2], pred_b[2], pred_b[3], fill=False, edgecolor="#f97316", linewidth=1.8, linestyle="--"))
+    ax.scatter([cand_b[0]], [cand_b[1]], s=85, color="#f97316", edgecolor="white", zorder=4)
+    ax.scatter([pred_b_center[0]], [pred_b_center[1]], s=65, marker="x", color="#f97316", linewidth=2.0, zorder=4)
+    ax.annotate("", xy=pred_b_center, xytext=cand_b, arrowprops={"arrowstyle":"->", "color":"#f97316", "linewidth":1.2})
+    ax.text(cand_b[0] - 0.11, cand_b[1] + 0.08, "candidate B\nfar from center", fontsize=7.2, color="#c2410c")
+
+    # Center region used as a simple visual proxy for center prior/penalty.
+    center_region = Rectangle((gt_center[0] - 0.13, gt_center[1] - 0.13), 0.26, 0.26,
+                              fill=False, edgecolor="#16a34a", linewidth=1.5, linestyle=":")
+    ax.add_patch(center_region)
+    ax.text(gt_center[0], gt_center[1] + 0.18, "center region\npenalty=0 inside", ha="center", fontsize=7.1, color="#166534")
+
+    ax.text(0.50, 0.08, "L_box judges predicted box quality; center penalty judges whether the candidate point should own this object",
+            ha="center", fontsize=7.4, color="#334155")
 
 
 def _draw_scaling_demo(ax):
@@ -1521,6 +1648,7 @@ _ELEMENT_DRAWERS = {
     "focus": _draw_focus_demo,
     "reparam": _draw_reparam_demo,
     "decoupled": _draw_decoupled_head_demo,
+    "anchor_point_grid": _draw_anchor_point_grid_demo,
     "assignment": _draw_assignment_demo,
     "efficiency": _draw_efficiency_demo,
     "elan": _draw_elan_demo,
