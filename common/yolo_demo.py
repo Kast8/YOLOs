@@ -682,6 +682,345 @@ def _arch_notes_en(version):
     return notes[version]
 
 
+
+
+def _arch_box(ax, x, y, w, h, label, face, edge, fontsize=7.4, lw=1.35):
+    from matplotlib.patches import Rectangle
+    ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=lw))
+    ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=fontsize, weight="bold", linespacing=1.12)
+
+
+def _arch_arrow(ax, x1, y1, x2, y2, color="#475569", lw=1.2, style="-|>", rad=0.0):
+    from matplotlib.patches import FancyArrowPatch
+    ax.add_patch(FancyArrowPatch((x1, y1), (x2, y2), arrowstyle=style, mutation_scale=12,
+                                 linewidth=lw, color=color, connectionstyle=f"arc3,rad={rad}"))
+
+
+def _draw_yolov2_architecture(ax):
+    ax.set_xlim(0, 16)
+    ax.set_ylim(0, 6.0)
+    ax.axis("off")
+    ax.text(8.0, 5.78, "YOLOv2 architecture: Darknet-19 + passthrough + anchor head", ha="center", va="top", fontsize=13, weight="bold")
+    b, a = _arch_box, _arch_arrow
+    b(ax, 0.35, 3.75, 1.25, 0.58, "Input\n416x416", "#dbeafe", "#2563eb")
+    b(ax, 2.0, 3.75, 1.45, 0.58, "Conv+BN\nleaky", "#dbeafe", "#2563eb")
+    b(ax, 3.90, 3.75, 1.45, 0.58, "Darknet-19\nstages", "#bfdbfe", "#1d4ed8")
+    b(ax, 5.85, 4.55, 1.45, 0.55, "26x26\nroute", "#dcfce7", "#16a34a")
+    b(ax, 5.85, 3.10, 1.45, 0.55, "13x13\ndeep", "#fef3c7", "#d97706")
+    b(ax, 7.75, 4.55, 1.30, 0.55, "reorg\n26->13", "#dcfce7", "#16a34a")
+    b(ax, 9.45, 3.78, 1.35, 0.62, "concat\nfine+deep", "#f3e8ff", "#9333ea")
+    b(ax, 11.20, 3.78, 1.50, 0.62, "anchor head\n5 priors/cell", "#fee2e2", "#dc2626")
+    b(ax, 13.15, 3.78, 1.75, 0.62, "13x13x\n5*(5+C)", "#ffe4e6", "#be123c")
+    b(ax, 13.15, 2.45, 1.75, 0.55, "NMS\nfinal boxes", "#f8fafc", "#64748b")
+    for x1,x2 in [(1.6,2.0),(3.45,3.90),(5.35,5.85)]:
+        a(ax,x1,4.04,x2,4.04)
+    a(ax, 5.35, 4.04, 5.85, 3.37, rad=-0.2)
+    a(ax, 7.30, 4.82, 7.75, 4.82, "#16a34a")
+    a(ax, 7.30, 3.37, 9.45, 4.00, "#d97706", rad=0.12)
+    a(ax, 9.05, 4.82, 9.45, 4.10, "#16a34a", rad=-0.15)
+    a(ax, 10.80, 4.09, 11.20, 4.09)
+    a(ax, 12.70, 4.09, 13.15, 4.09)
+    a(ax, 14.02, 3.78, 14.02, 3.00, "#64748b")
+    b(ax, 2.0, 1.20, 2.15, 0.55, "k-means anchors\nfrom GT bbox shapes", "#fff7ed", "#ea580c", 7.0)
+    b(ax, 4.55, 1.20, 2.15, 0.55, "high-res\nclassification pretrain", "#f0fdf4", "#16a34a", 7.0)
+    b(ax, 7.10, 1.20, 2.15, 0.55, "WordTree / YOLO9000\njoint labels", "#eff6ff", "#2563eb", 7.0)
+    ax.text(8.0, 0.55, "Read left to right: v2 keeps one-stage detection, but each cell now predicts offsets from multiple anchor priors and reuses a finer 26x26 feature map.", ha="center", fontsize=8.0, color="#334155")
+
+
+def _draw_yolov3_architecture(ax):
+    ax.set_xlim(0, 16)
+    ax.set_ylim(0, 6.2)
+    ax.axis("off")
+    ax.text(8.0, 6.0, "YOLOv3 architecture: Darknet-53 residual features + FPN-style 3-scale heads", ha="center", va="top", fontsize=13, weight="bold")
+    b, a = _arch_box, _arch_arrow
+    b(ax, .35, 3.9, 1.25, .58, "Input\n416x416", "#dbeafe", "#2563eb")
+    b(ax, 2.0, 3.9, 1.35, .58, "Conv stem", "#dbeafe", "#2563eb")
+    b(ax, 3.75, 4.75, 1.45, .55, "Res stage\nC3 52x52", "#dcfce7", "#16a34a")
+    b(ax, 3.75, 3.75, 1.45, .55, "Res stage\nC4 26x26", "#fef3c7", "#d97706")
+    b(ax, 3.75, 2.75, 1.45, .55, "Res stage\nC5 13x13", "#fee2e2", "#dc2626")
+    for y in [5.02,4.02,3.02]: a(ax,3.35,4.19,3.75,y,rad=.15 if y>4.2 else (-.15 if y<3.5 else 0))
+    b(ax, 6.15, 2.75, 1.45, .55, "Head P5\n13x13", "#fee2e2", "#dc2626")
+    b(ax, 6.15, 3.75, 1.45, .55, "concat C4\n+ up P5", "#fef3c7", "#d97706")
+    b(ax, 6.15, 4.75, 1.45, .55, "concat C3\n+ up P4", "#dcfce7", "#16a34a")
+    a(ax,5.20,3.02,6.15,3.02,"#dc2626")
+    a(ax,5.20,4.02,6.15,4.02,"#d97706")
+    a(ax,5.20,5.02,6.15,5.02,"#16a34a")
+    a(ax,6.88,3.30,6.88,3.75,"#dc2626",style="-|>")
+    a(ax,6.88,4.30,6.88,4.75,"#d97706",style="-|>")
+    ax.text(7.18, 4.55, "upsample", fontsize=6.7, color="#475569")
+    ax.text(7.18, 3.55, "upsample", fontsize=6.7, color="#475569")
+    b(ax, 8.50, 4.75, 1.55, .55, "YOLO head\n52x52", "#dcfce7", "#16a34a")
+    b(ax, 8.50, 3.75, 1.55, .55, "YOLO head\n26x26", "#fef3c7", "#d97706")
+    b(ax, 8.50, 2.75, 1.55, .55, "YOLO head\n13x13", "#fee2e2", "#dc2626")
+    for y,c in [(5.02,"#16a34a"),(4.02,"#d97706"),(3.02,"#dc2626")]: a(ax,7.60,y,8.50,y,c)
+    b(ax, 10.70, 4.75, 1.70, .55, "small objects\nfine grid", "#f0fdf4", "#16a34a", 6.9)
+    b(ax, 10.70, 3.75, 1.70, .55, "medium objects", "#fffbeb", "#d97706", 6.9)
+    b(ax, 10.70, 2.75, 1.70, .55, "large objects\ndeep semantic", "#fff1f2", "#dc2626", 6.9)
+    for y,c in [(5.02,"#16a34a"),(4.02,"#d97706"),(3.02,"#dc2626")]: a(ax,10.05,y,10.70,y,c)
+    b(ax, 13.15, 3.75, 1.65, .62, "NMS\nfinal boxes", "#f8fafc", "#64748b")
+    for y in [5.02,4.02,3.02]: a(ax,12.40,y,13.15,4.06,"#64748b",rad=-.12)
+    ax.text(8.0, 0.75, "v3 explicitly exposes three detection scales. Deep semantic features move upward through FPN-style upsample+concat blocks.", ha="center", fontsize=8.0, color="#334155")
+
+
+def _draw_yolov4_architecture(ax):
+    ax.set_xlim(0, 16)
+    ax.set_ylim(0, 6.2)
+    ax.axis("off")
+    ax.text(8.0, 6.0, "YOLOv4 architecture: CSPDarknet53 + SPP + PAN + YOLO heads", ha="center", va="top", fontsize=13, weight="bold")
+    b, a = _arch_box, _arch_arrow
+    b(ax,.35,4.05,1.25,.58,"Input\nMosaic/SAT", "#dbeafe", "#2563eb")
+    b(ax,1.95,4.05,1.30,.58,"Conv stem", "#dbeafe", "#2563eb")
+    ax.add_patch(__import__('matplotlib').patches.Rectangle((3.65,2.75),3.3,2.35,facecolor="#f8fafc",edgecolor="#94a3b8",linewidth=1.1,linestyle="--"))
+    ax.text(5.30,4.90,"CSPDarknet53 stage",ha="center",fontsize=8.5,weight="bold",color="#334155")
+    b(ax,3.95,4.15,1.05,.48,"split A\nshortcut", "#dcfce7", "#16a34a",6.8)
+    b(ax,3.95,3.30,1.05,.48,"split B", "#fee2e2", "#dc2626",6.8)
+    b(ax,5.35,3.30,1.18,.48,"res blocks\nxN", "#fecaca", "#dc2626",6.8)
+    b(ax,5.35,4.15,1.18,.48,"concat\n+ fuse", "#f3e8ff", "#9333ea",6.8)
+    a(ax,3.25,4.34,3.95,4.39); a(ax,3.25,4.34,3.95,3.54,rad=-.15)
+    a(ax,5.00,3.54,5.35,3.54,"#dc2626"); a(ax,6.53,3.54,6.00,4.15,"#dc2626",rad=.15); a(ax,5.00,4.39,5.35,4.39,"#16a34a")
+    b(ax,7.55,4.15,1.30,.55,"C3/C4/C5\nfeatures", "#dcfce7", "#16a34a",6.8)
+    b(ax,9.35,4.15,1.35,.55,"SPP on C5\n1/5/9/13 pool", "#fef3c7", "#d97706",6.7)
+    b(ax,11.15,4.70,1.30,.50,"PAN top-down", "#e0f2fe", "#0284c7",6.8)
+    b(ax,11.15,3.45,1.30,.50,"PAN bottom-up", "#cffafe", "#0891b2",6.8)
+    b(ax,13.05,4.70,1.30,.50,"YOLO head\nP3", "#dcfce7", "#16a34a",6.8)
+    b(ax,13.05,3.85,1.30,.50,"YOLO head\nP4", "#fef3c7", "#d97706",6.8)
+    b(ax,13.05,3.00,1.30,.50,"YOLO head\nP5", "#fee2e2", "#dc2626",6.8)
+    b(ax,14.75,3.85,0.95,.55,"NMS", "#f8fafc", "#64748b",7.0)
+    for x1,x2 in [(1.60,1.95),(6.95,7.55),(8.85,9.35),(10.70,11.15)]: a(ax,x1,4.34,x2,4.34)
+    a(ax,12.45,4.95,13.05,4.95,"#16a34a"); a(ax,12.45,3.70,13.05,4.10,"#d97706",rad=.12); a(ax,12.45,3.70,13.05,3.25,"#dc2626",rad=-.12)
+    for y in [4.95,4.10,3.25]: a(ax,14.35,y,14.75,4.12,"#64748b",rad=-.1)
+    b(ax,2.0,1.25,2.25,.55,"BoF training\nMosaic, CIoU, label smoothing", "#fff7ed", "#ea580c",6.7)
+    b(ax,4.65,1.25,1.55,.55,"Mish\nactivation", "#f5f3ff", "#7c3aed",6.8)
+    b(ax,6.65,1.25,2.20,.55,"BoS modules\nCSP + SPP + PAN", "#f0fdf4", "#16a34a",6.8)
+    ax.text(8.0,.65,"v4 is a full recipe: stronger backbone, stronger neck, better loss/activation, and training tricks around the same anchor-based YOLO heads.",ha="center",fontsize=8.0,color="#334155")
+
+
+def _draw_yolov5_architecture(ax):
+    ax.set_xlim(0, 16)
+    ax.set_ylim(0, 6.0)
+    ax.axis("off")
+    ax.text(8.0,5.78,"YOLOv5 architecture: PyTorch training/export pipeline around CSP + SPPF + PAN",ha="center",va="top",fontsize=13,weight="bold")
+    b,a=_arch_box,_arch_arrow
+    b(ax,.35,3.95,1.15,.58,"Input\n640", "#dbeafe", "#2563eb")
+    b(ax,1.90,3.95,1.30,.58,"Focus\nslice 2x2->4C", "#dbeafe", "#2563eb",6.8)
+    b(ax,3.60,4.75,1.35,.50,"CSP/C3\nP3", "#dcfce7", "#16a34a",6.8)
+    b(ax,3.60,3.80,1.35,.50,"CSP/C3\nP4", "#dcfce7", "#16a34a",6.8)
+    b(ax,3.60,2.85,1.35,.50,"CSP/C3\nP5", "#dcfce7", "#16a34a",6.8)
+    b(ax,5.45,2.85,1.25,.50,"SPPF\nfast pool", "#fef3c7", "#d97706",6.8)
+    b(ax,7.25,4.75,1.25,.50,"PAN\nN3", "#e0f2fe", "#0284c7",6.8)
+    b(ax,7.25,3.80,1.25,.50,"PAN\nN4", "#e0f2fe", "#0284c7",6.8)
+    b(ax,7.25,2.85,1.25,.50,"PAN\nN5", "#e0f2fe", "#0284c7",6.8)
+    b(ax,9.10,4.75,1.35,.50,"Detect\nsmall", "#dcfce7", "#16a34a",6.8)
+    b(ax,9.10,3.80,1.35,.50,"Detect\nmedium", "#fef3c7", "#d97706",6.8)
+    b(ax,9.10,2.85,1.35,.50,"Detect\nlarge", "#fee2e2", "#dc2626",6.8)
+    b(ax,11.05,3.80,1.45,.58,"AutoAnchor\ncheck/update", "#fff7ed", "#ea580c",6.8)
+    b(ax,13.00,4.35,1.70,.55,"train/val/predict\nPyTorch CLI", "#f5f3ff", "#7c3aed",6.8)
+    b(ax,13.00,3.25,1.70,.55,"export\nONNX/TensorRT", "#f8fafc", "#64748b",6.8)
+    a(ax,1.50,4.24,1.90,4.24); a(ax,3.20,4.24,3.60,4.98,rad=.12); a(ax,3.20,4.24,3.60,4.05); a(ax,3.20,4.24,3.60,3.10,rad=-.12)
+    a(ax,4.95,3.10,5.45,3.10,"#d97706")
+    for y in [5.00,4.05,3.10]: a(ax,4.95,y,7.25,y,"#0284c7")
+    a(ax,6.70,3.10,7.25,3.10,"#0284c7")
+    a(ax,7.88,4.75,7.88,4.30,"#0284c7",style="<|-|>"); a(ax,7.88,3.80,7.88,3.35,"#0284c7",style="<|-|>")
+    for y,c in [(5.00,"#16a34a"),(4.05,"#d97706"),(3.10,"#dc2626")]: a(ax,8.50,y,9.10,y,c); a(ax,10.45,y,11.05,4.09,"#ea580c",rad=.08)
+    a(ax,12.50,4.09,13.00,4.62,"#7c3aed",rad=.12); a(ax,12.50,4.09,13.00,3.52,"#64748b",rad=-.12)
+    ax.text(8.0,.75,"v5's architectural novelty is modest compared with its workflow impact: one PyTorch system for train, predict, validate, and export.",ha="center",fontsize=8.0,color="#334155")
+
+
+def _draw_yolov6_architecture(ax):
+    ax.set_xlim(0, 16)
+    ax.set_ylim(0, 6.0)
+    ax.axis("off")
+    ax.text(8.0,5.78,"YOLOv6 architecture: EfficientRep + Rep-PAN + TAL + deploy fusion",ha="center",va="top",fontsize=13,weight="bold")
+    b,a=_arch_box,_arch_arrow
+    b(ax,.35,3.95,1.20,.58,"Input", "#dbeafe", "#2563eb")
+    ax.add_patch(__import__('matplotlib').patches.Rectangle((2.0,2.85),3.6,2.25,facecolor="#f8fafc",edgecolor="#94a3b8",linewidth=1.1,linestyle="--"))
+    ax.text(3.80,4.90,"EfficientRep backbone block",ha="center",fontsize=8.4,weight="bold",color="#334155")
+    b(ax,2.25,4.25,1.10,.46,"3x3 Conv\n+BN", "#dbeafe", "#2563eb",6.6)
+    b(ax,2.25,3.55,1.10,.46,"1x1 Conv\n+BN", "#fef3c7", "#d97706",6.6)
+    b(ax,2.25,2.85,1.10,.46,"Identity\n+BN", "#f3e8ff", "#9333ea",6.6)
+    b(ax,4.10,3.55,1.20,.56,"sum\ntrain graph", "#dcfce7", "#16a34a",6.8)
+    for y,c in [(4.48,"#2563eb"),(3.78,"#d97706"),(3.08,"#9333ea")]: a(ax,3.35,y,4.10,3.83,c)
+    a(ax,1.55,4.24,2.0,3.98)
+    b(ax,6.30,4.30,1.45,.55,"Rep-PAN\nneck N3", "#e0f2fe", "#0284c7",6.8)
+    b(ax,6.30,3.45,1.45,.55,"Rep-PAN\nneck N4", "#e0f2fe", "#0284c7",6.8)
+    b(ax,6.30,2.60,1.45,.55,"Rep-PAN\nneck N5", "#e0f2fe", "#0284c7",6.8)
+    for y in [4.58,3.73,2.88]: a(ax,5.30,3.83,6.30,y,"#0284c7",rad=.12 if y>4 else (-.12 if y<3 else 0))
+    a(ax,7.02,4.30,7.02,4.00,"#0284c7",style="<|-|>"); a(ax,7.02,3.45,7.02,3.15,"#0284c7",style="<|-|>")
+    b(ax,8.65,4.30,1.45,.55,"Efficient\nhead P3", "#dcfce7", "#16a34a",6.8)
+    b(ax,8.65,3.45,1.45,.55,"Efficient\nhead P4", "#fef3c7", "#d97706",6.8)
+    b(ax,8.65,2.60,1.45,.55,"Efficient\nhead P5", "#fee2e2", "#dc2626",6.8)
+    for y,c in [(4.58,"#16a34a"),(3.73,"#d97706"),(2.88,"#dc2626")]: a(ax,7.75,y,8.65,y,c)
+    b(ax,10.85,3.45,1.60,.62,"TAL assigner\nt=s^a u^b", "#f0fdf4", "#16a34a",6.8)
+    for y in [4.58,3.73,2.88]: a(ax,10.10,y,10.85,3.76,"#16a34a",rad=.08)
+    b(ax,13.05,4.05,1.55,.58,"deploy\nfused 3x3 Conv", "#bfdbfe", "#1d4ed8",6.8)
+    b(ax,13.05,2.95,1.55,.58,"runtime\nsimple ops", "#f8fafc", "#64748b",6.8)
+    a(ax,5.30,3.83,13.05,4.34,"#1d4ed8",rad=.08)
+    a(ax,12.45,3.76,13.05,3.24,"#64748b",rad=-.12)
+    b(ax,2.25,1.20,2.05,.55,"training graph\nmore branches", "#fff7ed", "#ea580c",6.8)
+    b(ax,4.75,1.20,2.05,.55,"inference graph\nfused branches", "#ffedd5", "#c2410c",6.8)
+    a(ax,4.30,1.48,4.75,1.48,"#ea580c")
+    ax.text(8.0,.62,"v6's core architecture split: train with richer Rep blocks, assign positives with TAL, deploy as a simpler low-latency graph.",ha="center",fontsize=8.0,color="#334155")
+
+def _draw_yolov7_architecture(ax):
+    from matplotlib.patches import FancyArrowPatch, Rectangle
+
+    ax.set_xlim(0, 16)
+    ax.set_ylim(0, 6.2)
+    ax.axis("off")
+    ax.text(8.0, 5.95, "YOLOv7 architecture: E-ELAN paths, PAN neck, lead/aux heads", ha="center", va="top", fontsize=13, weight="bold")
+
+    def box(x, y, w, h, label, face, edge, fontsize=8.0, lw=1.35):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=lw))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=fontsize, weight="bold", linespacing=1.13)
+
+    def arrow(x1, y1, x2, y2, color="#475569", lw=1.25, style="-|>", rad=0.0):
+        ax.add_patch(FancyArrowPatch((x1, y1), (x2, y2), arrowstyle=style, mutation_scale=13,
+                                     linewidth=lw, color=color, connectionstyle=f"arc3,rad={rad}"))
+
+    # Input and stem.
+    box(0.35, 3.85, 1.35, 0.62, "Input\nimage", "#dbeafe", "#2563eb")
+    box(2.05, 3.85, 1.45, 0.62, "Stem\nConv/down", "#dbeafe", "#2563eb")
+    arrow(1.70, 4.16, 2.05, 4.16)
+
+    # E-ELAN stage, drawn with explicit parallel/depth paths.
+    ax.add_patch(Rectangle((3.85, 2.42), 4.05, 2.85, facecolor="#f8fafc", edgecolor="#94a3b8", linewidth=1.1, linestyle="--"))
+    ax.text(5.88, 5.08, "E-ELAN stage", ha="center", va="center", fontsize=9.0, weight="bold", color="#334155")
+    box(4.10, 4.30, 0.95, 0.48, "split", "#eef2ff", "#4f46e5", 7.2)
+    paths = [
+        (5.40, 4.55, "path 1\n1 Conv", "#dcfce7", "#16a34a"),
+        (5.40, 3.70, "path 2\n2 Conv", "#fef3c7", "#d97706"),
+        (5.40, 2.85, "path 3\n3 Conv", "#fee2e2", "#dc2626"),
+    ]
+    for x, y, label, face, edge in paths:
+        box(x, y, 1.18, 0.50, label, face, edge, 6.9)
+        arrow(5.05, 4.54, x, y + 0.25, edge, rad=0.12 if y > 4 else (-0.08 if y < 3 else 0.0))
+    box(6.95, 3.45, 0.82, 0.62, "concat\n3C", "#f3e8ff", "#9333ea", 7.0)
+    for x, y, label, face, edge in paths:
+        arrow(x + 1.18, y + 0.25, 6.95, 3.76, edge, rad=-0.08 if y > 4 else (0.08 if y < 3 else 0.0))
+    box(8.25, 3.45, 1.05, 0.62, "merge\n1x1/3x3", "#ede9fe", "#7c3aed", 7.0)
+    arrow(7.77, 3.76, 8.25, 3.76, "#7c3aed")
+    ax.text(5.90, 2.62, "multiple depths are preserved before merge", ha="center", va="center", fontsize=7.2, color="#334155")
+
+    # Downstream backbone stages.
+    box(9.75, 4.65, 1.25, 0.54, "E-ELAN\nstage P3", "#dcfce7", "#16a34a", 6.9)
+    box(9.75, 3.55, 1.25, 0.54, "E-ELAN\nstage P4", "#dcfce7", "#16a34a", 6.9)
+    box(9.75, 2.45, 1.25, 0.54, "E-ELAN\nstage P5", "#dcfce7", "#16a34a", 6.9)
+    arrow(9.30, 3.76, 9.75, 4.92, "#16a34a", rad=0.15)
+    arrow(9.30, 3.76, 9.75, 3.82, "#16a34a")
+    arrow(9.30, 3.76, 9.75, 2.72, "#16a34a", rad=-0.15)
+
+    # Neck, explicitly bidirectional.
+    box(11.80, 4.65, 1.15, 0.52, "PAN neck\nN3", "#e0f2fe", "#0284c7", 6.8)
+    box(11.80, 3.55, 1.15, 0.52, "PAN neck\nN4", "#e0f2fe", "#0284c7", 6.8)
+    box(11.80, 2.45, 1.15, 0.52, "PAN neck\nN5", "#e0f2fe", "#0284c7", 6.8)
+    for y in [4.92, 3.82, 2.72]:
+        arrow(11.00, y, 11.80, y, "#0284c7")
+    arrow(12.38, 4.65, 12.38, 4.07, "#0284c7", style="<|-|>", lw=1.15)
+    arrow(12.38, 3.55, 12.38, 2.97, "#0284c7", style="<|-|>", lw=1.15)
+    ax.text(12.80, 3.82, "top-down\n+ bottom-up", ha="left", va="center", fontsize=6.8, color="#075985")
+
+    # Detection heads.
+    box(13.75, 4.65, 1.25, 0.52, "Lead head\nP3", "#fef3c7", "#d97706", 6.8)
+    box(13.75, 3.55, 1.25, 0.52, "Lead head\nP4", "#fef3c7", "#d97706", 6.8)
+    box(13.75, 2.45, 1.25, 0.52, "Lead head\nP5", "#fef3c7", "#d97706", 6.8)
+    for y in [4.92, 3.82, 2.72]:
+        arrow(12.95, y, 13.75, y, "#d97706")
+    box(13.75, 1.38, 1.25, 0.50, "Aux head\ntraining only", "#fee2e2", "#dc2626", 6.7)
+    arrow(12.35, 2.45, 13.75, 1.63, "#dc2626", rad=-0.18)
+    ax.text(14.38, 1.05, "removed at inference", ha="center", va="center", fontsize=6.8, color="#991b1b")
+
+    # Planned re-param and scaling annotations.
+    box(3.95, 1.25, 1.8, 0.55, "planned RepConv\ntrain multi-branch", "#fff7ed", "#ea580c", 6.9)
+    box(6.25, 1.25, 1.55, 0.55, "deploy\nsingle Conv", "#ffedd5", "#c2410c", 6.9)
+    arrow(5.75, 1.52, 6.25, 1.52, "#ea580c")
+    ax.text(5.88, 0.88, "RepConv is placed where fusion does not break ELAN paths", ha="center", fontsize=7.0, color="#7c2d12")
+
+    box(8.85, 1.25, 2.15, 0.55, "compound scaling\ndepth + width + concat width", "#f0fdf4", "#16a34a", 6.8)
+    ax.text(9.92, 0.88, "scaling watches merge/transition cost", ha="center", fontsize=7.0, color="#166534")
+
+    ax.text(0.45, 0.38,
+            "Key reading: YOLOv7 is not one block. It is a repeated E-ELAN backbone, PAN-style neck, lead heads for inference, auxiliary heads for training, and planned RepConv for deploy.",
+            ha="left", va="center", fontsize=8.0, color="#334155")
+
+
+def _draw_yolov8_architecture(ax):
+    from matplotlib.patches import Rectangle
+
+    ax.set_xlim(0, 16)
+    ax.set_ylim(0, 6.2)
+    ax.axis("off")
+    ax.text(8.0, 5.95, "YOLOv8 architecture: C2f backbone, PAN-FPN neck, anchor-free decoupled head", ha="center", va="top", fontsize=13, weight="bold")
+
+    b, a = _arch_box, _arch_arrow
+
+    # Input and backbone.
+    b(ax, 0.35, 3.85, 1.25, 0.62, "Input\n640", "#dbeafe", "#2563eb", 7.1)
+    b(ax, 1.95, 3.85, 1.25, 0.62, "Conv stem\nstride 2", "#dbeafe", "#2563eb", 6.9)
+    a(ax, 1.60, 4.16, 1.95, 4.16)
+
+    ax.add_patch(Rectangle((3.55, 2.42), 4.35, 2.85, facecolor="#f8fafc", edgecolor="#94a3b8", linewidth=1.1, linestyle="--"))
+    ax.text(5.72, 5.08, "C2f backbone stages", ha="center", va="center", fontsize=9.0, weight="bold", color="#334155")
+    b(ax, 3.85, 4.45, 1.10, 0.48, "split\nchannels", "#eef2ff", "#4f46e5", 6.9)
+    b(ax, 5.25, 4.45, 1.05, 0.48, "Bottleneck\n1", "#dcfce7", "#16a34a", 6.6)
+    b(ax, 5.25, 3.67, 1.05, 0.48, "Bottleneck\n2", "#dcfce7", "#16a34a", 6.6)
+    b(ax, 5.25, 2.89, 1.05, 0.48, "Bottleneck\nn", "#dcfce7", "#16a34a", 6.6)
+    for y, rad in [(4.69, 0.0), (3.91, -0.10), (3.13, -0.16)]:
+        a(ax, 4.95, 4.69, 5.25, y, "#16a34a", rad=rad)
+    b(ax, 6.70, 3.67, 0.92, 0.62, "concat\npartial", "#f3e8ff", "#9333ea", 6.8)
+    for y, rad in [(4.69, -0.10), (3.91, 0.0), (3.13, 0.10)]:
+        a(ax, 6.30, y, 6.70, 3.98, "#9333ea", rad=rad)
+    b(ax, 3.85, 2.58, 1.20, 0.48, "stage out\nP3/P4/P5", "#e0f2fe", "#0284c7", 6.7)
+    a(ax, 3.20, 4.16, 3.55, 4.69)
+    a(ax, 7.62, 3.98, 7.90, 3.98, "#9333ea")
+    ax.text(5.72, 2.20, "C2f keeps gradient/feature paths while using fewer heavy branches than C3.", ha="center", fontsize=7.0, color="#334155")
+
+    # Multi-scale features and SPPF.
+    b(ax, 8.35, 4.70, 1.20, 0.52, "P3\n80x80", "#dcfce7", "#16a34a", 6.9)
+    b(ax, 8.35, 3.65, 1.20, 0.52, "P4\n40x40", "#fef3c7", "#d97706", 6.9)
+    b(ax, 8.35, 2.60, 1.20, 0.52, "P5\n20x20", "#fee2e2", "#dc2626", 6.9)
+    for y, c, rad in [(4.96, "#16a34a", 0.12), (3.91, "#d97706", 0.0), (2.86, "#dc2626", -0.12)]:
+        a(ax, 7.90, 3.98, 8.35, y, c, rad=rad)
+    b(ax, 9.95, 2.60, 1.18, 0.52, "SPPF\non P5", "#fff7ed", "#ea580c", 6.9)
+    a(ax, 9.55, 2.86, 9.95, 2.86, "#ea580c")
+
+    # Neck with explicit bidirectional aggregation.
+    b(ax, 11.15, 4.70, 1.18, 0.52, "PAN-FPN\nN3", "#e0f2fe", "#0284c7", 6.8)
+    b(ax, 11.15, 3.65, 1.18, 0.52, "PAN-FPN\nN4", "#e0f2fe", "#0284c7", 6.8)
+    b(ax, 11.15, 2.60, 1.18, 0.52, "PAN-FPN\nN5", "#e0f2fe", "#0284c7", 6.8)
+    a(ax, 9.55, 4.96, 11.15, 4.96, "#0284c7")
+    a(ax, 9.55, 3.91, 11.15, 3.91, "#0284c7")
+    a(ax, 11.13, 2.86, 11.15, 2.86, "#0284c7")
+    a(ax, 11.74, 4.70, 11.74, 4.17, "#0284c7", style="<|-|>", lw=1.15)
+    a(ax, 11.74, 3.65, 11.74, 3.12, "#0284c7", style="<|-|>", lw=1.15)
+    ax.text(12.42, 3.90, "top-down\n+ bottom-up\nfusion", ha="left", va="center", fontsize=6.8, color="#075985")
+
+    # Anchor-free decoupled head.
+    ax.add_patch(Rectangle((12.85, 2.18), 2.75, 3.18, facecolor="#f8fafc", edgecolor="#94a3b8", linewidth=1.1, linestyle="--"))
+    ax.text(14.22, 5.15, "decoupled head per scale", ha="center", fontsize=8.4, weight="bold", color="#334155")
+    b(ax, 13.10, 4.55, 0.92, 0.44, "cls\nC", "#dcfce7", "#16a34a", 6.6)
+    b(ax, 13.10, 3.88, 0.92, 0.44, "box\nl,t,r,b", "#fef3c7", "#d97706", 6.4)
+    b(ax, 13.10, 3.21, 0.92, 0.44, "DFL\nbins", "#fee2e2", "#dc2626", 6.6)
+    b(ax, 14.42, 3.88, 0.92, 0.44, "decode\npoint+dist", "#f3e8ff", "#9333ea", 6.3)
+    for y in [4.96, 3.91, 2.86]:
+        a(ax, 12.33, y, 12.85, 4.20, "#475569", rad=0.08)
+    for y, c in [(4.77, "#16a34a"), (4.10, "#d97706"), (3.43, "#dc2626")]:
+        a(ax, 14.02, y, 14.42, 4.10, c, rad=-0.08)
+    b(ax, 14.42, 2.55, 0.92, 0.44, "NMS\noutput", "#f8fafc", "#64748b", 6.7)
+    a(ax, 14.88, 3.88, 14.88, 2.99, "#64748b")
+
+    # Training and API annotations.
+    b(ax, 2.20, 1.22, 2.10, 0.55, "anchor-free\npositive assigner", "#f0fdf4", "#16a34a", 6.8)
+    b(ax, 4.75, 1.22, 2.20, 0.55, "box loss\nCIoU + DFL", "#fff7ed", "#ea580c", 6.8)
+    b(ax, 7.40, 1.22, 2.15, 0.55, "same API\ndetect / segment / pose", "#f5f3ff", "#7c3aed", 6.8)
+    b(ax, 10.00, 1.22, 2.10, 0.55, "export path\nONNX / TensorRT", "#f8fafc", "#64748b", 6.8)
+    a(ax, 13.55, 3.21, 6.95, 1.50, "#ea580c", rad=-0.18)
+    a(ax, 13.55, 4.55, 4.30, 1.50, "#16a34a", rad=0.18)
+    a(ax, 15.34, 2.77, 12.10, 1.50, "#64748b", rad=-0.12)
+
+    ax.text(0.45, 0.45,
+            "Key reading: v8 keeps the familiar P3/P4/P5 detector shape, but replaces anchor boxes with point-to-box distances, separates class/regression branches, and trains box edges with DFL.",
+            ha="left", va="center", fontsize=8.0, color="#334155")
+
 def display_yolo_architecture(version):
     """Draw a compact architecture diagram for a YOLO generation after v1."""
     try:
@@ -689,6 +1028,21 @@ def display_yolo_architecture(version):
         from matplotlib.patches import FancyArrowPatch, Rectangle
     except ImportError as exc:
         raise ImportError("Install matplotlib to display YOLO architecture diagrams") from exc
+
+    detailed = {
+        2: _draw_yolov2_architecture,
+        3: _draw_yolov3_architecture,
+        4: _draw_yolov4_architecture,
+        5: _draw_yolov5_architecture,
+        6: _draw_yolov6_architecture,
+        7: _draw_yolov7_architecture,
+        8: _draw_yolov8_architecture,
+    }
+    if version in detailed:
+        fig, ax = plt.subplots(figsize=(16, 6.2))
+        detailed[version](ax)
+        fig.tight_layout()
+        return _display_figure(fig)
 
     spec = _arch_spec(version)
     blocks = spec["blocks"]
@@ -1046,21 +1400,66 @@ def _draw_yolov6_overview_demo(ax):
     ax.set_ylim(0.45, 4.15)
 
 def _draw_elan_demo(ax):
-    ax.set_title("ELAN/GELAN-style multi-path aggregation", fontsize=11, weight="bold")
+    from matplotlib.patches import Rectangle
+
+    ax.set_title("E-ELAN: different transformation depths before merge", fontsize=11, weight="bold")
     ax.axis("off")
-    ax.add_patch(Rectangle((0.3, 2.0), 1.5, 0.65, facecolor="#dbeafe", edgecolor="#2563eb", linewidth=1.5))
-    ax.text(1.05, 2.33, "input", ha="center", va="center", weight="bold")
-    ys = [3.1, 2.1, 1.1]
-    names = ["short path", "conv path", "deep path"]
-    for y, name in zip(ys, names):
-        ax.add_patch(Rectangle((3.0, y), 2.0, 0.55, facecolor="#dcfce7", edgecolor="#16a34a", linewidth=1.5))
-        ax.text(4.0, y + 0.275, name, ha="center", va="center", fontsize=9)
-        ax.annotate("", xy=(3.0, y + 0.275), xytext=(1.8, 2.33), arrowprops={"arrowstyle": "-|>"})
-        ax.annotate("", xy=(6.2, 2.33), xytext=(5.0, y + 0.275), arrowprops={"arrowstyle": "-|>"})
-    ax.add_patch(Rectangle((6.2, 2.0), 1.7, 0.65, facecolor="#fef3c7", edgecolor="#d97706", linewidth=1.5))
-    ax.text(7.05, 2.33, "concat", ha="center", va="center", weight="bold")
-    ax.set_xlim(0, 8.4)
-    ax.set_ylim(0.7, 3.9)
+
+    def block(x, y, w, h, label, face, edge, fontsize=6.8):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.25))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center",
+                fontsize=fontsize, weight="bold", linespacing=1.08)
+
+    def arrow(x1, y1, x2, y2, color="#475569", rad=0.0):
+        ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
+                    arrowprops={"arrowstyle": "-|>", "color": color, "linewidth": 1.05,
+                                "connectionstyle": f"arc3,rad={rad}"})
+
+    # Left: simple widening. It increases channels with one transform depth.
+    ax.text(1.75, 3.68, "simple channel increase", ha="center", fontsize=8.0, weight="bold", color="#334155")
+    block(0.30, 2.48, 0.85, 0.42, "X\nC", "#dbeafe", "#2563eb")
+    block(1.55, 2.38, 1.15, 0.62, "wide Conv\nout 4C", "#fee2e2", "#dc2626")
+    block(3.05, 2.48, 0.85, 0.42, "Y\n4C", "#fee2e2", "#dc2626")
+    arrow(1.15, 2.69, 1.55, 2.69)
+    arrow(2.70, 2.69, 3.05, 2.69)
+    ax.text(2.10, 1.70, "width increases, but output is\nfrom one transformation depth", ha="center", fontsize=6.8, color="#991b1b")
+
+    # Right: E-ELAN. Draw repeated Conv boxes so different depth is visible.
+    ax.text(6.75, 3.68, "E-ELAN block", ha="center", fontsize=8.0, weight="bold", color="#334155")
+    block(4.25, 2.48, 0.78, 0.42, "X\nC", "#dbeafe", "#2563eb")
+    block(5.35, 3.16, 0.72, 0.38, "Conv", "#dcfce7", "#16a34a")
+    block(5.35, 2.48, 0.72, 0.38, "Conv", "#fef3c7", "#d97706")
+    block(6.20, 2.48, 0.72, 0.38, "Conv", "#fef3c7", "#d97706")
+    block(5.35, 1.80, 0.72, 0.38, "Conv", "#fee2e2", "#dc2626")
+    block(6.20, 1.80, 0.72, 0.38, "Conv", "#fee2e2", "#dc2626")
+    block(7.05, 1.80, 0.72, 0.38, "Conv", "#fee2e2", "#dc2626")
+
+    ax.text(6.15, 3.02, "depth 1", ha="center", fontsize=6.3, color="#166534")
+    ax.text(7.00, 2.34, "depth 2", ha="center", fontsize=6.3, color="#92400e")
+    ax.text(7.85, 1.66, "depth 3", ha="center", fontsize=6.3, color="#991b1b")
+
+    # fan out and chains
+    arrow(5.03, 2.69, 5.35, 3.35, "#16a34a", rad=0.15)
+    arrow(5.03, 2.69, 5.35, 2.67, "#d97706")
+    arrow(5.03, 2.69, 5.35, 1.99, "#dc2626", rad=-0.15)
+    arrow(6.07, 2.67, 6.20, 2.67, "#d97706")
+    arrow(6.07, 1.99, 6.20, 1.99, "#dc2626")
+    arrow(6.92, 1.99, 7.05, 1.99, "#dc2626")
+
+    block(8.30, 2.22, 0.95, 0.78, "concat\nF1,F2,F3\n3C", "#f3e8ff", "#9333ea", 6.5)
+    block(9.70, 2.30, 1.05, 0.62, "merge Conv\nC'", "#ede9fe", "#7c3aed", 6.6)
+    block(11.15, 2.30, 1.10, 0.62, "next stage\nor PAN neck", "#e0f2fe", "#0284c7", 6.5)
+    arrow(6.07, 3.35, 8.30, 2.78, "#16a34a", rad=-0.10)
+    arrow(6.92, 2.67, 8.30, 2.61, "#d97706")
+    arrow(7.77, 1.99, 8.30, 2.43, "#dc2626", rad=0.08)
+    arrow(9.25, 2.61, 9.70, 2.61, "#7c3aed")
+    arrow(10.75, 2.61, 11.15, 2.61, "#0284c7")
+
+    ax.text(8.45, 1.05, "The block output goes to another E-ELAN stage,\nthen the neck, then detection heads.", ha="center", fontsize=6.9, color="#334155")
+    ax.text(6.25, 0.35, "Difference: E-ELAN preserves intermediate depths before merging; it is repeated across stages, not a one-time operation before the head.",
+            ha="center", fontsize=7.0, color="#334155")
+    ax.set_xlim(0.05, 12.55)
+    ax.set_ylim(0.15, 3.95)
 
 
 def _draw_anchor_free_demo(ax):
@@ -1078,6 +1477,69 @@ def _draw_anchor_free_demo(ax):
     for x, y, label in labels:
         ax.plot([p[0], x], [p[1], y], color="#2563eb", linewidth=1.6)
         ax.text((p[0] + x) / 2, (p[1] + y) / 2, label, fontsize=10, weight="bold")
+
+
+
+def _draw_trainable_bof_demo(ax):
+    from matplotlib.patches import Rectangle
+
+    ax.set_title("YOLOv7 trainable BoF: coarse labels for auxiliary, fine labels for lead", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    def block(x, y, w, h, label, face, edge, fontsize=6.8):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.3))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=fontsize, weight="bold", linespacing=1.08)
+
+    def arrow(x1, y1, x2, y2, color="#475569", rad=0.0, style="-|>"):
+        ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
+                    arrowprops={"arrowstyle": style, "color": color, "linewidth": 1.05,
+                                "connectionstyle": f"arc3,rad={rad}"})
+
+    block(0.20, 2.18, 1.05, 0.50, "PAN neck\nfeatures", "#e0f2fe", "#0284c7")
+    block(1.75, 2.88, 1.05, 0.48, "Lead head", "#fef3c7", "#d97706")
+    block(1.75, 1.35, 1.05, 0.48, "Aux head\ntrain only", "#fee2e2", "#dc2626")
+    arrow(1.25, 2.43, 1.75, 3.12, "#d97706", rad=0.16)
+    arrow(1.25, 2.43, 1.75, 1.59, "#dc2626", rad=-0.16)
+
+    block(3.20, 2.88, 1.25, 0.48, "lead preds\nbox,obj,cls", "#fffbeb", "#d97706", 6.5)
+    block(3.20, 1.35, 1.25, 0.48, "aux preds\nbox,obj,cls", "#fff1f2", "#dc2626", 6.5)
+    arrow(2.80, 3.12, 3.20, 3.12, "#d97706")
+    arrow(2.80, 1.59, 3.20, 1.59, "#dc2626")
+
+    block(4.90, 2.88, 1.35, 0.48, "GT + lead preds\nsoft assigner", "#f0fdf4", "#16a34a", 6.4)
+    arrow(4.45, 3.12, 4.90, 3.12, "#16a34a")
+    ax.text(5.58, 3.55, "lead head guides\nboth targets", ha="center", fontsize=6.3, color="#166534")
+
+    block(6.75, 3.05, 1.30, 0.48, "fine label\nstrict positives", "#dcfce7", "#16a34a", 6.4)
+    block(6.75, 1.95, 1.30, 0.48, "coarse label\nrelaxed positives", "#ffedd5", "#ea580c", 6.4)
+    arrow(6.25, 3.12, 6.75, 3.29, "#16a34a", rad=0.10)
+    arrow(6.25, 3.12, 6.75, 2.19, "#ea580c", rad=-0.18)
+
+    # Candidate grids to show coarse has more positives.
+    ax.text(7.40, 1.58, "more grids become positive", ha="center", fontsize=6.2, color="#9a3412")
+    xs = [6.95, 7.18, 7.41, 7.64, 7.87]
+    for i, x in enumerate(xs):
+        fc = "#16a34a" if i == 2 else "#fed7aa"
+        ec = "#15803d" if i == 2 else "#ea580c"
+        ax.add_patch(Rectangle((x, 1.28), 0.13, 0.13, facecolor=fc, edgecolor=ec, linewidth=0.8))
+    ax.text(7.40, 1.05, "center-distance upper bound\nkeeps coarse labels weaker", ha="center", fontsize=6.2, color="#9a3412")
+
+    block(8.75, 3.05, 1.12, 0.48, "L_lead", "#dcfce7", "#16a34a")
+    block(8.75, 1.95, 1.12, 0.48, "L_aux", "#ffedd5", "#ea580c")
+    arrow(8.05, 3.29, 8.75, 3.29, "#16a34a")
+    arrow(8.05, 2.19, 8.75, 2.19, "#ea580c")
+    arrow(4.45, 1.59, 8.75, 2.05, "#dc2626", rad=0.07)
+
+    block(10.65, 2.45, 1.35, 0.60, "L = L_lead\n+ lambda L_aux", "#ede9fe", "#7c3aed", 6.6)
+    arrow(9.87, 3.29, 10.65, 2.83, "#16a34a", rad=-0.10)
+    arrow(9.87, 2.19, 10.65, 2.62, "#ea580c", rad=0.10)
+    block(10.65, 0.72, 1.35, 0.48, "inference:\nlead only", "#f8fafc", "#64748b", 6.6)
+    arrow(2.28, 2.88, 10.65, 1.06, "#64748b", rad=-0.14)
+
+    ax.text(6.1, 0.34, "Aux learns a high-recall, relaxed target from lead-guided labels; lead learns the stricter fine target used for final predictions.",
+            ha="center", fontsize=7.0, color="#334155")
+    ax.set_xlim(0.05, 12.25)
+    ax.set_ylim(0.15, 3.85)
 
 
 def _draw_pgi_demo(ax):
@@ -1145,6 +1607,84 @@ def _draw_hypergraph_demo(ax):
     ax.annotate("aggregate and return", xy=(2.6, 1.65), xytext=(2.1, 1.65), arrowprops={"arrowstyle": "<->"}, ha="center")
 
 
+
+def _draw_yolov7_overview_demo(ax):
+    from matplotlib.patches import Rectangle
+
+    ax.set_title("YOLOv6 -> YOLOv7: what actually changes", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    def block(x, y, w, h, label, face, edge, fontsize=6.8, lw=1.25):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=lw))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=fontsize, weight="bold", linespacing=1.08)
+
+    def arrow(x1, y1, x2, y2, color="#475569", rad=0.0, style="-|>"):
+        ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
+                    arrowprops={"arrowstyle": style, "color": color, "linewidth": 1.05,
+                                "connectionstyle": f"arc3,rad={rad}"})
+
+    # Column backgrounds.
+    ax.add_patch(Rectangle((0.20, 0.78), 4.35, 3.70, facecolor="#f8fafc", edgecolor="#cbd5e1", linewidth=1.0))
+    ax.add_patch(Rectangle((5.00, 0.78), 4.85, 3.70, facecolor="#ffffff", edgecolor="#cbd5e1", linewidth=1.0))
+    ax.text(2.38, 4.28, "YOLOv6 baseline", ha="center", fontsize=8.5, weight="bold", color="#334155")
+    ax.text(7.42, 4.28, "YOLOv7 changes", ha="center", fontsize=8.5, weight="bold", color="#334155")
+
+    # v6 side.
+    block(0.55, 3.40, 1.35, 0.48, "EfficientRep\nRep blocks", "#dbeafe", "#2563eb", 6.5)
+    block(2.45, 3.40, 1.35, 0.48, "Rep-PAN\nneck", "#e0f2fe", "#0284c7", 6.5)
+    block(0.55, 2.35, 1.35, 0.48, "Efficient\nheads", "#fef3c7", "#d97706", 6.5)
+    block(2.45, 2.35, 1.35, 0.48, "TAL\nassignment", "#dcfce7", "#16a34a", 6.5)
+    block(1.50, 1.25, 1.40, 0.48, "deploy\nfused Conv", "#f8fafc", "#64748b", 6.5)
+    arrow(1.90, 3.64, 2.45, 3.64, "#0284c7")
+    arrow(1.23, 3.40, 1.23, 2.83, "#d97706")
+    arrow(3.12, 3.40, 3.12, 2.83, "#16a34a")
+    arrow(2.45, 2.35, 2.25, 1.73, "#64748b", rad=0.08)
+
+    # v7 side, aligned to v6 concepts but showing replacement/extension.
+    block(5.35, 3.40, 1.50, 0.48, "E-ELAN\nmore feature paths", "#dcfce7", "#16a34a", 6.4)
+    block(7.65, 3.40, 1.50, 0.48, "PAN +\nscaled neck", "#e0f2fe", "#0284c7", 6.4)
+    block(5.35, 2.35, 1.50, 0.48, "Lead heads\nfinal output", "#fef3c7", "#d97706", 6.4)
+    block(7.65, 2.35, 1.50, 0.48, "Aux heads\ntraining only", "#fee2e2", "#dc2626", 6.4)
+    block(5.35, 1.25, 1.50, 0.48, "planned\nRepConv/N", "#fff7ed", "#ea580c", 6.4)
+    block(7.65, 1.25, 1.50, 0.48, "compound\nscaling", "#ecfeff", "#0891b2", 6.4)
+
+    arrow(6.85, 3.64, 7.65, 3.64, "#0284c7")
+    arrow(6.10, 3.40, 6.10, 2.83, "#d97706")
+    arrow(8.40, 3.40, 8.40, 2.83, "#dc2626")
+    arrow(6.10, 2.35, 6.10, 1.73, "#ea580c")
+    arrow(8.40, 2.35, 8.40, 1.73, "#0891b2")
+
+    # Difference arrows from v6 to v7.
+    arrow(4.55, 3.64, 5.35, 3.64, "#16a34a")
+    ax.text(4.95, 3.92, "backbone/blocks\nbecome E-ELAN", ha="center", fontsize=6.2, color="#166534")
+    arrow(4.55, 2.59, 5.35, 2.59, "#d97706")
+    ax.text(4.95, 2.91, "heads gain\naux supervision", ha="center", fontsize=6.2, color="#92400e")
+    arrow(4.55, 1.49, 5.35, 1.49, "#ea580c")
+    ax.text(4.95, 1.82, "RepConv is\nplaced carefully", ha="center", fontsize=6.2, color="#9a3412")
+
+    # Compact comparison table.
+    rows = [
+        ("Feature flow", "EfficientRep", "E-ELAN: more paths + concat"),
+        ("Scaling", "not the main story", "compound scaling for concat models"),
+        ("Re-param", "Rep blocks", "planned RepConv / RepConvN"),
+        ("Training", "TAL assignment", "aux head + lead-guided coarse/fine labels"),
+    ]
+    y0 = 0.52
+    ax.text(0.45, y0, "change", fontsize=6.6, weight="bold", color="#334155")
+    ax.text(2.25, y0, "v6", fontsize=6.6, weight="bold", color="#334155")
+    ax.text(5.05, y0, "v7", fontsize=6.6, weight="bold", color="#334155")
+    for i, (k, v6, v7) in enumerate(rows):
+        y = y0 - 0.20 - i * 0.24
+        ax.text(0.45, y, k, fontsize=6.2, color="#334155")
+        ax.text(2.25, y, v6, fontsize=6.2, color="#475569")
+        ax.text(5.05, y, v7, fontsize=6.2, color="#111827")
+
+    ax.text(5.0, 0.05, "v7 is not mainly a new detection output format; it improves how the detector is scaled, trained, and re-parameterized compared with v6.",
+            ha="center", fontsize=7.0, color="#334155")
+    ax.set_xlim(0.05, 10.05)
+    ax.set_ylim(0.0, 4.70)
+
+
 def _draw_deployment_demo(ax):
     ax.set_title("Deployment-oriented output", fontsize=11, weight="bold")
     ax.axis("off")
@@ -1175,7 +1715,7 @@ def display_yolo_technology_demo(version):
         4: _draw_yolov4_overview_demo,
         5: _draw_focus_demo,
         6: _draw_yolov6_overview_demo,
-        7: _draw_elan_demo,
+        7: _draw_yolov7_overview_demo,
         8: _draw_anchor_free_demo,
         9: _draw_pgi_demo,
         10: _draw_nms_free_demo,
@@ -1606,6 +2146,91 @@ def _draw_assignment_demo(ax):
             ha="center", fontsize=7.4, color="#334155")
 
 
+
+def _draw_tal_assignment_flow_demo(ax):
+    from matplotlib.patches import Rectangle
+
+    ax.set_title("TAL positive selection flow: choose boxes with aligned class score and IoU", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    gt = (0.36, 0.30, 0.28, 0.30)
+    candidates = [
+        {"name": "A", "pt": (0.44, 0.46), "box": (0.25, 0.30, 0.28, 0.25), "s": 0.88, "u": 0.32, "color": "#f97316"},
+        {"name": "B", "pt": (0.58, 0.43), "box": (0.38, 0.31, 0.27, 0.29), "s": 0.74, "u": 0.82, "color": "#16a34a"},
+        {"name": "C", "pt": (0.70, 0.61), "box": (0.40, 0.36, 0.27, 0.27), "s": 0.28, "u": 0.68, "color": "#2563eb"},
+    ]
+    alpha, beta = 1, 2
+    for cand in candidates:
+        cand["t"] = cand["s"] ** alpha * cand["u"] ** beta
+
+    def panel(x0, title, subtitle):
+        ax.add_patch(Rectangle((x0, 0.56), 1.9, 2.92, facecolor="#ffffff", edgecolor="#cbd5e1", linewidth=1.1))
+        ax.text(x0 + 0.95, 3.30, title, ha="center", va="center", fontsize=8.2, weight="bold", color="#111827")
+        ax.text(x0 + 0.95, 3.08, subtitle, ha="center", va="center", fontsize=6.7, color="#475569")
+
+    def to_panel(x0, x, y):
+        return x0 + 0.18 + x * 1.54, 0.76 + (1 - y) * 1.86
+
+    def draw_scene(x0, mode):
+        # light grid
+        for i in range(5):
+            gx = x0 + 0.18 + i * 1.54 / 4
+            gy = 0.76 + i * 1.86 / 4
+            ax.plot([gx, gx], [0.76, 2.62], color="#e2e8f0", linewidth=0.7)
+            ax.plot([x0 + 0.18, x0 + 1.72], [gy, gy], color="#e2e8f0", linewidth=0.7)
+
+        gx, gy = to_panel(x0, gt[0], gt[1])
+        gw, gh = gt[2] * 1.54, gt[3] * 1.86
+        ax.add_patch(Rectangle((gx, gy - gh), gw, gh, fill=False, edgecolor="#dc2626", linewidth=2.0))
+        ax.text(gx + gw / 2, gy - gh - 0.06, "GT", ha="center", va="top", fontsize=6.5, color="#dc2626", weight="bold")
+
+        for cand in candidates:
+            bx, by = to_panel(x0, cand["box"][0], cand["box"][1])
+            bw, bh = cand["box"][2] * 1.54, cand["box"][3] * 1.86
+            px, py = to_panel(x0, *cand["pt"])
+            is_positive = cand["name"] == "B"
+            if mode == "candidates":
+                lw, alpha_box, linestyle = 1.35, 0.95, "--"
+            elif mode == "score":
+                lw, alpha_box, linestyle = 1.6 + cand["t"] * 4.5, 0.95, "-"
+            elif mode in {"select", "target"}:
+                lw, alpha_box, linestyle = (2.8, 1.0, "-") if is_positive else (1.0, 0.22, "--")
+            else:
+                lw, alpha_box, linestyle = 1.2, 0.8, "--"
+            ax.add_patch(Rectangle((bx, by - bh), bw, bh, fill=False, edgecolor=cand["color"], linewidth=lw, linestyle=linestyle, alpha=alpha_box))
+            ax.scatter([px], [py], s=32 if is_positive and mode in {"select", "target"} else 24,
+                       color=cand["color"], edgecolor="white", linewidth=0.8, zorder=4, alpha=max(alpha_box, 0.45))
+            ax.text(px + 0.035, py - 0.035, cand["name"], fontsize=6.4, color=cand["color"], weight="bold", alpha=max(alpha_box, 0.55))
+
+    xs = [0.25, 2.35, 4.45, 6.55]
+    panel(xs[0], "1. candidates", "points predict boxes")
+    draw_scene(xs[0], "candidates")
+    ax.text(xs[0] + 0.95, 0.42, "same GT, several candidate boxes", ha="center", fontsize=6.8, color="#334155")
+
+    panel(xs[1], "2. alignment", "compute t = s^a u^b")
+    draw_scene(xs[1], "score")
+    rows = ["A: s=.88 u=.32  t=.09", "B: s=.74 u=.82  t=.50", "C: s=.28 u=.68  t=.13"]
+    for k, row in enumerate(rows):
+        ax.text(xs[1] + 0.20, 0.56 + k * 0.16, row, ha="left", va="center", fontsize=6.05, color="#334155")
+
+    panel(xs[2], "3. top aligned", "select positives")
+    draw_scene(xs[2], "select")
+    ax.text(xs[2] + 0.95, 0.42, "B wins: class score and IoU are both high", ha="center", fontsize=6.8, color="#166534", weight="bold")
+
+    panel(xs[3], "4. train target", "quality-weighted class target")
+    draw_scene(xs[3], "target")
+    ax.text(xs[3] + 0.95, 0.70, "positive B", ha="center", fontsize=7.0, color="#166534", weight="bold")
+    ax.text(xs[3] + 0.95, 0.48, "y_cls reflects box quality", ha="center", fontsize=6.8, color="#334155")
+
+    for x1, x2 in [(2.15, 2.35), (4.25, 4.45), (6.35, 6.55)]:
+        ax.annotate("", xy=(x2 - 0.04, 2.02), xytext=(x1 + 0.04, 2.02),
+                    arrowprops={"arrowstyle": "-|>", "color": "#64748b", "linewidth": 1.15})
+
+    ax.text(4.35, 0.14, "TAL does not just ask 'is the point near the object?'; it asks whether classification confidence and box IoU agree.",
+            ha="center", va="center", fontsize=7.4, color="#334155")
+    ax.set_xlim(0.05, 8.65)
+    ax.set_ylim(0.05, 3.65)
+
 def _draw_scaling_demo(ax):
     ax.set_title("Model scaling", fontsize=11, weight="bold")
     ax.set_xlabel("width multiplier")
@@ -1703,6 +2328,7 @@ _ELEMENT_DRAWERS = {
     "decoupled": _draw_decoupled_head_demo,
     "anchor_point_grid": _draw_anchor_point_grid_demo,
     "assignment": _draw_assignment_demo,
+    "tal_assignment": _draw_tal_assignment_flow_demo,
     "efficiency": _draw_efficiency_demo,
     "elan": _draw_elan_demo,
     "scaling": _draw_scaling_demo,
@@ -1710,6 +2336,7 @@ _ELEMENT_DRAWERS = {
     "c2f": _draw_c2f_demo,
     "dfl": _draw_dfl_demo,
     "pgi": _draw_pgi_demo,
+    "trainable_bof": _draw_trainable_bof_demo,
     "nms_free": _draw_nms_free_demo,
     "attention": lambda ax: _draw_attention_demo(ax, area=False),
     "area_attention": lambda ax: _draw_attention_demo(ax, area=True),
