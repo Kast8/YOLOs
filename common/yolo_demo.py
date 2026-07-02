@@ -1480,6 +1480,59 @@ def _draw_anchor_free_demo(ax):
 
 
 
+
+def _draw_yolov8_vs_v7_demo(ax):
+    ax.set_title("YOLOv8 changes from YOLOv7", fontsize=11, weight="bold")
+    ax.axis("off")
+
+    def block(x, y, w, h, label, face, edge, fs=7.0):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.25))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=fs, weight="bold")
+
+    def arrow(x1, y1, x2, y2, color="#475569", rad=0.0):
+        ax.annotate(
+            "",
+            xy=(x2, y2),
+            xytext=(x1, y1),
+            arrowprops={
+                "arrowstyle": "-|>",
+                "color": color,
+                "linewidth": 1.2,
+                "connectionstyle": f"arc3,rad={rad}",
+            },
+        )
+
+    ax.text(1.85, 4.42, "YOLOv7 (2022)", ha="center", fontsize=9.4, weight="bold", color="#92400e")
+    ax.text(6.95, 4.42, "YOLOv8 (2023)", ha="center", fontsize=9.4, weight="bold", color="#1d4ed8")
+    ax.text(4.40, 4.42, "main change", ha="center", fontsize=8.0, weight="bold", color="#334155")
+
+    rows = [
+        (3.72, "backbone block", "E-ELAN /\nELAN-family blocks", "C2f blocks\nwith feature reuse", "lighter CSP-style\nfeature reuse"),
+        (2.92, "head design", "coupled /\nanchor-based style", "decoupled head\ncls branch + box branch", "separate class\nand box prediction"),
+        (2.12, "box representation", "anchor priors +\nbox offsets", "anchor-free point\n+ l,t,r,b distances", "remove anchor size\ndependency"),
+        (1.32, "box learning", "IoU loss based\nbox regression", "DFL + IoU loss\nfor box edges", "learn edge distance\nas distribution"),
+        (0.52, "usage surface", "research/training\nrepo workflow", "Ultralytics API\ndetect/seg/pose/cls/obb", "unified tooling\nacross tasks"),
+    ]
+
+    for y, topic, v7, v8, diff in rows:
+        block(0.35, y, 2.15, 0.48, v7, "#fef3c7", "#d97706", 6.6)
+        block(3.22, y, 2.05, 0.48, diff, "#f8fafc", "#64748b", 6.5)
+        block(6.28, y, 2.25, 0.48, v8, "#dbeafe", "#2563eb", 6.6)
+        ax.text(2.86, y + 0.24, topic, ha="center", va="center", fontsize=6.4, color="#334155")
+        arrow(2.50, y + 0.24, 3.22, y + 0.24, "#64748b")
+        arrow(5.27, y + 0.24, 6.28, y + 0.24, "#64748b")
+
+    ax.text(
+        4.45,
+        0.08,
+        "v8 is not just a larger v7: it changes the default Ultralytics detector head to anchor-free decoupled prediction, adds DFL-style box distances, and standardizes the user-facing API.",
+        ha="center",
+        fontsize=7.0,
+        color="#334155",
+    )
+    ax.set_xlim(0.05, 8.85)
+    ax.set_ylim(0.0, 4.7)
+
 def _draw_trainable_bof_demo(ax):
     from matplotlib.patches import Rectangle
 
@@ -1716,7 +1769,7 @@ def display_yolo_technology_demo(version):
         5: _draw_focus_demo,
         6: _draw_yolov6_overview_demo,
         7: _draw_yolov7_overview_demo,
-        8: _draw_anchor_free_demo,
+        8: _draw_yolov8_vs_v7_demo,
         9: _draw_pgi_demo,
         10: _draw_nms_free_demo,
         11: lambda axis: _draw_attention_demo(axis, area=False),
@@ -2242,19 +2295,71 @@ def _draw_scaling_demo(ax):
 
 
 def _draw_c2f_demo(ax):
-    ax.set_title("C2f feature reuse", fontsize=11, weight="bold")
+    ax.set_title("C2f: which features are concatenated?", fontsize=11, weight="bold")
     ax.axis("off")
-    xs = [0.4, 2.4, 4.4, 6.4]
-    labels = ["split", "bottleneck 1", "bottleneck 2", "concat"]
-    for x,label in zip(xs,labels):
-        ax.add_patch(Rectangle((x,1.8),1.5,0.7,facecolor="#dcfce7",edgecolor="#16a34a",linewidth=1.5))
-        ax.text(x+.75,2.15,label,ha="center",va="center",fontsize=8.5,weight="bold")
-    for x1,x2 in [(1.9,2.4),(3.9,4.4),(5.9,6.4)]:
-        ax.annotate("", xy=(x2,2.15), xytext=(x1,2.15), arrowprops={"arrowstyle":"-|>"})
-    ax.text(4.0,1.25,"intermediate features are reused before concat",ha="center",fontsize=9)
-    ax.set_xlim(0,8.4)
-    ax.set_ylim(1.0,3.0)
 
+    def block(x, y, w, h, label, face="#f8fafc", edge="#64748b", fs=8.2):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.5))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=fs, weight="bold")
+
+    def arrow(x1, y1, x2, y2, color="#475569", lw=1.25, rad=0.0):
+        ax.annotate(
+            "",
+            xy=(x2, y2),
+            xytext=(x1, y1),
+            arrowprops={
+                "arrowstyle": "-|>",
+                "color": color,
+                "linewidth": lw,
+                "connectionstyle": f"arc3,rad={rad}",
+            },
+        )
+
+    blue = ("#e0f2fe", "#0284c7")
+    green = ("#dcfce7", "#16a34a")
+    orange = ("#fff7ed", "#ea580c")
+    purple = ("#ede9fe", "#7c3aed")
+
+    block(0.25, 2.62, 1.0, 0.55, "input\nX", *blue)
+    block(1.65, 2.62, 1.15, 0.55, "split", "#fef9c3", "#ca8a04")
+    block(3.25, 2.62, 1.25, 0.55, "Bottleneck\n1", *green)
+    block(5.05, 2.62, 1.25, 0.55, "Bottleneck\n2", *green)
+    block(8.55, 2.62, 1.05, 0.55, "1x1 conv\nfuse", *blue)
+
+    block(2.0, 1.72, 0.95, 0.44, "X_keep", *orange)
+    block(3.40, 1.72, 0.95, 0.44, "Y1", *orange)
+    block(5.20, 1.72, 0.95, 0.44, "Y2", *orange)
+
+    block(6.90, 1.15, 1.35, 2.15, "concat\ninputs", *purple)
+    block(7.12, 2.53, 0.92, 0.34, "X_keep", *orange, fs=7.5)
+    block(7.12, 1.98, 0.92, 0.34, "Y1", *orange, fs=7.5)
+    block(7.12, 1.43, 0.92, 0.34, "Y2", *orange, fs=7.5)
+
+    # Main computation path.
+    arrow(1.25, 2.90, 1.65, 2.90)
+    arrow(2.80, 2.90, 3.25, 2.90)
+    arrow(4.50, 2.90, 5.05, 2.90)
+    arrow(8.25, 2.90, 8.55, 2.90)
+
+    # Show exactly where each concat input is taken from.
+    arrow(2.23, 2.62, 2.45, 2.16, color="#ea580c", rad=0.10)
+    arrow(2.95, 1.94, 7.12, 2.70, color="#ea580c", lw=1.45, rad=-0.16)
+    ax.text(3.45, 2.25, "kept split feature", ha="center", fontsize=7.3, color="#9a3412")
+
+    arrow(4.18, 2.62, 3.88, 2.16, color="#ea580c", rad=-0.10)
+    arrow(4.35, 1.94, 7.12, 2.15, color="#ea580c", lw=1.45, rad=-0.08)
+    ax.text(4.95, 2.25, "output of B1", ha="center", fontsize=7.3, color="#9a3412")
+
+    arrow(5.68, 2.62, 5.68, 2.16, color="#ea580c")
+    arrow(6.15, 1.94, 7.12, 1.60, color="#ea580c", lw=1.45, rad=0.08)
+    ax.text(6.32, 2.25, "output of B2", ha="center", fontsize=7.3, color="#9a3412")
+
+    arrow(8.25, 2.22, 8.55, 2.90, color="#7c3aed", rad=-0.20)
+
+    ax.text(4.20, 3.47, "main branch transforms only one split part", ha="center", fontsize=8.2, color="#334155")
+    ax.text(4.95, 0.68, "concat receives the preserved split feature plus every bottleneck output, not only the last output", ha="center", fontsize=8.0, color="#334155")
+    ax.set_xlim(0.0, 9.9)
+    ax.set_ylim(0.45, 3.8)
 
 def _draw_dfl_demo(ax):
     ax.set_title("Distribution Focal Loss intuition", fontsize=11, weight="bold")
@@ -2269,18 +2374,72 @@ def _draw_dfl_demo(ax):
 
 
 def _draw_pipeline_demo(ax):
-    ax.set_title("Training / inference / export pipeline", fontsize=11, weight="bold")
+    ax.set_title("Ultralytics task API: shared parts and task-specific parts", fontsize=11, weight="bold")
     ax.axis("off")
-    labels = ["dataset", "train", "validate", "predict", "export"]
-    for i,label in enumerate(labels):
-        x = 0.35 + i*1.55
-        ax.add_patch(Rectangle((x,1.7),1.2,0.7,facecolor="#dbeafe",edgecolor="#2563eb",linewidth=1.4))
-        ax.text(x+.6,2.05,label,ha="center",va="center",fontsize=8.5,weight="bold")
-        if i < len(labels)-1:
-            ax.annotate("", xy=(x+1.55,2.05), xytext=(x+1.2,2.05), arrowprops={"arrowstyle":"-|>"})
-    ax.set_xlim(0,8.2)
-    ax.set_ylim(1.2,3.0)
 
+    def block(x, y, w, h, label, face="#f8fafc", edge="#64748b", fs=7.6):
+        ax.add_patch(Rectangle((x, y), w, h, facecolor=face, edgecolor=edge, linewidth=1.35))
+        ax.text(x + w / 2, y + h / 2, label, ha="center", va="center", fontsize=fs, weight="bold")
+
+    def arrow(x1, y1, x2, y2, color="#475569", lw=1.15, rad=0.0):
+        ax.annotate(
+            "",
+            xy=(x2, y2),
+            xytext=(x1, y1),
+            arrowprops={
+                "arrowstyle": "-|>",
+                "color": color,
+                "linewidth": lw,
+                "connectionstyle": f"arc3,rad={rad}",
+            },
+        )
+
+    shared_face, shared_edge = "#dbeafe", "#2563eb"
+    task_face, task_edge = "#fef3c7", "#d97706"
+    result_face, result_edge = "#dcfce7", "#16a34a"
+
+    ax.text(4.2, 3.62, "common API surface", ha="center", fontsize=8.4, color="#1d4ed8", weight="bold")
+    for x, label in [
+        (0.25, "load\nYOLO(weights)"),
+        (1.72, "preprocess\nimage/batch"),
+        (3.20, "train / val\npredict"),
+        (4.68, "visualize\nresults"),
+        (6.16, "export\nONNX etc."),
+    ]:
+        block(x, 2.92, 1.15, 0.52, label, shared_face, shared_edge)
+    for x1, x2 in [(1.40, 1.72), (2.87, 3.20), (4.35, 4.68), (5.83, 6.16)]:
+        arrow(x1, 3.18, x2, 3.18, shared_edge)
+
+    ax.text(4.2, 2.55, "task-specific model parts", ha="center", fontsize=8.4, color="#92400e", weight="bold")
+    task_rows = [
+        (2.12, "detect\n.pt", "box head\ncls + bbox", "boxes"),
+        (1.50, "segment\n-seg.pt", "mask head\nbox + mask", "boxes + masks"),
+        (0.88, "pose\n-pose.pt", "keypoint head\nbox + kpts", "boxes + keypoints"),
+        (0.26, "classify\n-cls.pt", "classifier head", "class scores"),
+    ]
+    for y, task, head, out in task_rows:
+        block(0.60, y, 1.05, 0.42, task, task_face, task_edge, fs=7.2)
+        block(2.35, y, 1.35, 0.42, head, task_face, task_edge, fs=7.2)
+        block(4.45, y, 1.25, 0.42, out, result_face, result_edge, fs=7.2)
+        arrow(1.65, y + 0.21, 2.35, y + 0.21, task_edge)
+        arrow(3.70, y + 0.21, 4.45, y + 0.21, result_edge)
+        arrow(3.78, 2.92, 3.02, y + 0.42, shared_edge, lw=0.85, rad=0.12)
+        arrow(5.20, y + 0.42, 5.20, 2.92, shared_edge, lw=0.85, rad=-0.10)
+
+    block(6.55, 0.88, 1.15, 0.42, "OBB\n-obb.pt", task_face, task_edge, fs=7.2)
+    block(8.00, 0.88, 1.35, 0.42, "rotated box\nhead", task_face, task_edge, fs=7.2)
+    block(8.00, 0.26, 1.35, 0.42, "rotated\nboxes", result_face, result_edge, fs=7.2)
+    arrow(7.70, 1.09, 8.00, 1.09, task_edge)
+    arrow(8.68, 0.88, 8.68, 0.68, result_edge)
+    arrow(6.73, 2.92, 7.02, 1.30, shared_edge, lw=0.85, rad=0.20)
+    arrow(8.68, 0.68, 6.82, 2.92, shared_edge, lw=0.85, rad=-0.20)
+
+    ax.text(1.12, 0.04, "weights choose the task", ha="center", fontsize=7.2, color="#92400e")
+    ax.text(3.02, 0.04, "head / loss / labels differ", ha="center", fontsize=7.2, color="#92400e")
+    ax.text(5.08, 0.04, "Result fields differ", ha="center", fontsize=7.2, color="#166534")
+    ax.text(4.2, 3.78, "same commands and tooling; different heads, labels, losses, and outputs", ha="center", fontsize=7.4, color="#334155")
+    ax.set_xlim(0.05, 9.6)
+    ax.set_ylim(0.0, 3.95)
 
 def _draw_efficiency_demo(ax):
     ax.set_title("Efficiency trade-off", fontsize=11, weight="bold")
